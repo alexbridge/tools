@@ -108,3 +108,11 @@ aws-stop:
 
 aws-start:
 	aws ec2 start-instances --instance-ids "i-***************"
+	
+	
+# =============== VIDEOS =====================
+.ONESHELL:
+download-m3u8:
+	read -ep "Enter m3u8 URL: " URL;
+	read -ep "Enter file name (withoum mp4 sufux): " FILE;
+	ffmpeg -protocol_whitelist file,http,https,tcp,tls,crypto -i $$URL -c copy $$FILE.mp4
