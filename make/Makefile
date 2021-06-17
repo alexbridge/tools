@@ -116,3 +116,23 @@ download-m3u8:
 	read -ep "Enter m3u8 URL: " URL;
 	read -ep "Enter file name (withoum mp4 sufux): " FILE;
 	ffmpeg -protocol_whitelist file,http,https,tcp,tls,crypto -i $$URL -c copy $$FILE.mp4
+
+# =============== XML =====================
+.ONESHELL:
+xml-select:
+	@$(call _i,Selecting XPATH ...)
+	read -ep "Enter xml file: " FILE;
+	read -ep "Enter ARTICLE/SUPPLIER_AID to select: " CODE;
+	xmlstarlet sel -t -c "BMECAT/T_NEW_CATALOG/ARTICLE[SUPPLIER_AID='$$CODE']" $$FILE
+	xmlstarlet sel -t -c "BMECAT/T_NEW_CATALOG/ARTICLE_TO_CATALOGGROUP_MAP[ART_ID='$$CODE']" $$FILE
+	PARENT=$$(xmlstarlet sel -t -v "BMECAT/T_NEW_CATALOG/ARTICLE_TO_CATALOGGROUP_MAP[ART_ID='$$CODE']/CATALOG_GROUP_ID" $$FILE)
+	xmlstarlet sel -t -c "BMECAT/T_NEW_CATALOG/CATALOG_GROUP_SYSTEM/CATALOG_STRUCTURE[GROUP_ID='$$PARENT']" $$FILE
+
+# =============== JSON =====================
+.ONESHELL:
+json-select:
+	@$(call _i,Selecting jsonpath ...)
+	read -ep "Enter json file: " FILE;
+	read -ep "Enter code to select entity: " CODE;
+	jq ".[] | select(.code == \"$$CODE\")" $$FILE
+	
