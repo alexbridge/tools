@@ -21,3 +21,5 @@ alias mmake='make --file=~/Makefile
 ```
 mmake
 ```
+
+![Live Example](./Make.usage.gif)
