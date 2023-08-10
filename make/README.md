@@ -1,12 +1,11 @@
 ### Useful make recipes
 
-Different make recipes for day to day development
+Different make recipes for day to day development: git, docker, shell
 
 #### Usage in project
 
 - Clone
-- copy Makefile to your project 
-- use
+- copy Makefile to your project directory
 
 #### Usage for user globally
 
@@ -17,6 +16,8 @@ Different make recipes for day to day development
 alias mmake='make --file=~/Makefile
 ```
 - use
+    - by default all available recipes will be listed with fzf
+
 ```
-mmake branch
+mmake
 ```
