@@ -1,91 +1,69 @@
 # Copy Makefile to your user home directory
 # add alias: 
-#   alias mmake='make --file=~/Makefile'
+#   alias mmake='make --file=$(MAKE_FILE)'
 # use:
 #	mmake git.branch
 #	mmake git.reset
 
-# tput setaf
-#0	Black
-#1	Red
-#2	Green
-#3	Yellow
-#4	Blue
-#5	Magenta
-#6	Cyan
-#7	White
-#8	Not used
-#9	Reset to default color
+SHELL := /bin/bash
+WORK_DIR := $(shell pwd)
+MAKE_FILE := $(WORK_DIR)/Makefile
+MMAKE := make --file=$(MAKE_FILE)
 
 # Text color output
-# example: $(call _green,Copying Makefile to user home ...)
-define _0
-	@tput setaf $(1)
-	echo $(2)
-	tput sgr0
-endef
+#0	Black 1 Red 2 Green 3 Yellow 4 Blue 5 Magenta 6 Cyan 7 White
+# example: $(call RED,Copying Makefile to user home ...)
+RED = $$(tput setaf 1; echo -n "$(1)"; tput sgr0)
+GREEN = $$(tput setaf 2; echo -n "$(1)"; tput sgr0)
+BLUE = $$(tput setaf 6; echo -n "$(1)"; tput sgr0)
+YELLOW = $$(tput setaf 3; echo -n "$(1)"; tput sgr0)
+WHITE = $$(tput setaf 7; echo -n "$(1)"; tput sgr0)
 
-define _green
-	$(call _0, 2, $(1))
-endef
+# Propmt helpers
+YES := yes
+NO := no
+PROMPT_YES_NO = $$(readarray -d '|' -t choices <<<"$(YES)|$(NO)"; printf "%s\n" "$${choices[@]}" | fzf --prompt='$(1): ' --header-first)
+PROMPT_CHOICES = $$(readarray -d '|' -t choices <<<"$(2)"; printf "%s\n" "$${choices[@]}" | fzf --prompt='$(1): ' --header-first)
 
-define _red
-	$(call _0, 1, $(1))
-endef
-
-define _cyan
-	@$(call _0, 6, $(1))
-endef
-
-define _yellow
-	@$(call _0, 3, $(1))
-endef
-
-define promtChoices
-	readarray -d '|' -t choices <<<"$(2)"
-	printf "%s\n" "$${choices[@]}" | fzf --prompt='$(1): ' --header-first
-endef
-YES = yes
-NO = no
-PROMPT_SHELL = choices=($(YES) $(NO)); printf "%s\n" "$${choices[@]}" | fzf --prompt='${1}: ' --header-first
-PROMPT_STASH = choices=($(YES) $(NO)); printf "%s\n" "$${choices[@]}" | fzf --prompt='Stach changes: ' --header-first
-PROMPT = $(shell -c $(PROMPT_SHELL))
-SHELL := /bin/bash
-MMAKE := make --file=~/Makefile
-LATEST_TAG := git for-each-ref --sort=-taggerdate --count=1 --format '%(refname:short)' refs/tags
-THE_BRANCH := git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/'
+# Git variables
+LATEST_TAG = $$(git for-each-ref --sort=-taggerdate --count=1 --format '%(refname:short)' refs/tags)
+THE_BRANCH = $$(git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/')
+REMOTE_BRANCH = $$(git fetch origin -p; git branch -r | fzf --prompt '$(1): ' | tr -d '[:space:]' | tr -d '*')
 
 .ONESHELL:
 .DEFAULT:
 _mmake.default:
 	@type fzf >/dev/null 2>&1 || { echo "Please install fzf"; exit 0; }
-	@recipe=$$(grep -oE '^[a-z][a-zA-Z0-9.-]+:' ~/Makefile | tr -d ':' | \
-	fzf --preview 'make --file=~/Makefile --silent -n {} | head -n 5' --preview-window=50%:down);
-	if [[ -n "$$recipe" ]]; then make --silent --file=~/Makefile $$recipe; fi;
+	@recipe=$$(grep -oE '^[a-z][a-zA-Z0-9.-]+:' $(MAKE_FILE) | tr -d ':' |
+	fzf --preview 'make --file=$(MAKE_FILE) --silent -n {} | head -n 5' --preview-window=50%:down);
+	if [[ -n "$$recipe" ]]; then make --silent --file=$(MAKE_FILE) $$recipe; fi;
 
 # Install each recipe as shell alias
 _mmake.install:
-	@echo "alias mmake='make --file=~/Makefile'" > ~/.mmake_aliases;
-	grep -oE '^[a-z][a-zA-Z0-9.-]+:' Makefile | tr -d ':' | while read recipe; do echo "alias $$recipe='make --file=~/Makefile $$recipe'" >> ~/.mmake_aliases; done;
-	grep '_mmake.install' ~/.bashrc > /dev/null || echo "make --file=~/Makefile _mmake.install; [[ -f ~/.mmake_aliases ]] && source ~/.mmake_aliases" >> ~/.bashrc
+	@echo "alias mmake='make --file=$(MAKE_FILE)'" > ~/.mmake_aliases;
+	grep -oE '^[a-z][a-zA-Z0-9.-]+:' Makefile | tr -d ':' | while read recipe; do echo "alias $$recipe='make --file=$(MAKE_FILE) $$recipe'" >> ~/.mmake_aliases; done;
+	grep '_mmake.install' ~/.bashrc > /dev/null || echo "make --file=$(MAKE_FILE) _mmake.install; [[ -f ~/.mmake_aliases ]] && source ~/.mmake_aliases" >> ~/.bashrc
 
-prompt:
-	@$(call HELLO, some)
-	RES=$(call PROMPT,Do you want to continue?)
+_echo.vars:
+	@echo "Working Directory: $(call BLUE,$(WORK_DIR))"
+	echo "Makefile to use: $(call BLUE,$(MAKE_FILE))"
+_prompt:
+	@RES=$(call PROMPT_YES_NO,Choose)
 	if [[ "$$RES" == "$(YES)" ]]; then echo 'YES Selected'; fi
 	if [[ "$$RES" == "$(NO)" ]]; then echo 'NO Selected'; fi
 
 # ==== RECIPES ====
 
 # ================ GIT ACTIONS ==============
-# Create a branch in current git directory
+git.latest.tag:
+	echo "Latest git tag: $(LATEST_TAG)"
+
 git.branch:
-	@$(call _i,creating a branch on current git directory ...)
-	@echo "Create a branch in current git directory";
+	@echo "$(call GREEN,Creating new git branch)"
 	read -ep "Enter branch name to create: " -i "feature/" BRANCH;
-	SOURCE_BRANCH=$$(git branch -r | fzf --prompt 'Source branch: ' | tr -d '[:space:]' | tr -d '*');
+	SOURCE_BRANCH=$(call REMOTE_BRANCH,Source branch);
 	SOURCE_BRANCH="$${SOURCE_BRANCH#origin/}";
-	STASH=$$($(PROMPT_STASH));
+	STASH=$(call PROMPT_YES_NO,Stash changes);
 	[[ "$$STASH" == "$(YES)" ]] && git stash;
 	git reset --hard; git fetch origin -p; git checkout origin/$$SOURCE_BRANCH; git branch -D $$BRANCH;
 	git checkout -b $$BRANCH;
@@ -93,17 +71,16 @@ git.branch:
 	git show | head -n 5;
 	echo Done!
 
-# Reset git HEAD to given branch
 git.reset:
-	@$(call _i,Reset git go given branch/tag in current git directory ...)
-	@git status;
+	@echo "$(call GREEN,Reset to existing remote git branch)"
+	git status;
 	git fetch origin -p;
 	echo '==============================================';
-	BRANCH=$$(git branch -r | fzf | tr -d '[:space:]' | tr -d '*');
+	BRANCH=$(call REMOTE_BRANCH,Source branch);
 	BRANCH="$${BRANCH#origin/}"
 	if [[ -n "$$BRANCH" ]]; then
-		echo "Reset git HEAD in current directory to given branch: $${BRANCH}";
-		STASH=$$($(PROMPT_STASH));
+		echo "Reset to given branch: $${BRANCH}";
+		STASH=$(call PROMPT_YES_NO,Stash changes);
 		[[ "$$STASH" == "$(YES)" ]] && git stash;
 		git reset --hard; git checkout "origin/$${BRANCH}"; git branch -D $$BRANCH;
 		git checkout -b $$BRANCH;
@@ -112,35 +89,34 @@ git.reset:
 		git show | head -n 5;
 	echo Done!
 	fi
-# Tag current state
+
 git.tag:
-	@$(call _i,Creating a git tag...)
-	@ LATEST=$$(${LATEST_TAG});
-	@tput setaf 7; echo Most recent tag: $$LATEST; tput sgr0;
-	tput setaf 6; read -ep "Enter new version: " -i "$${LATEST}" TAG; tput sgr0;
-	tput setaf 2; echo New version will be: $$TAG; tput sgr0;
+	@echo "$(call GREEN,Creating a git tag)"
+	LATEST="$(LATEST_TAG)";
+	echo "Most recent tag: $(call WHITE,$${LATEST})"
+	read -ep "Enter new version: " -i "$${LATEST}" TAG;
+	echo "New version will be: $(call GREEN,$${TAG})"
 	git tag -d $$TAG; git tag $$TAG; git push origin tags/$$TAG;
 	echo Done!
 
 git.archive:
-	# Create git archieve without ignored files
-	@$(call _i,Making git archive ...)
-	$(MMAKE) reset
+	@$(call GREEN,Making git archive)
+	$(MMAKE) git.reset
 	read -p "Enter archive name: " ARCHIVE;
 	[ -n "$$ARCHIVE" ] && git archive --format=tar -o "$${ARCHIVE}.tar" HEAD;
 	echo Done!
 
 git.stash:
-	@git stash -m "$$(${THE_BRANCH})"; git status
+	@git stash -m "$(THE_BRANCH)"; git status
 
 git.merge:
-	$(call _i, Merging remote changes ...)
+	@echo "$(call GREEN, Merging remote changes)"
 	git fetch origin -p;
 	echo '==============================================';
-	REMOTE_BRANCH=$$(git branch -r | fzf | tr -d '[:space:]' | tr -d '*');
+	REMOTE_BRANCH=$(call REMOTE_BRANCH,Remote branch to merge);
 	REMOTE_BRANCH="$${REMOTE_BRANCH#origin/}"
 	if [[ -n "$$REMOTE_BRANCH" ]]; then
-		echo "Merging origin/$$REMOTE_BRANCH;";
+		echo "Merging $(call BLUE, origin/$${REMOTE_BRANCH})";
 		git merge origin/$$REMOTE_BRANCH;
 	fi	
 
@@ -156,14 +132,14 @@ download.m3u8:
 
 # =============== JSON =====================
 json.select:
-	@$(call _green,Selecting jsonpath ...)
+	@echo "$(call GREEN,Selecting jsonpath ...)"
 	read -ep "Enter json file: " FILE;
 	read -ep "Enter code to select entity: " CODE;
 	jq ".[] | select(.code == \"$$CODE\")" $$FILE
 
 #========= DOCKER ACTION ===================
 docker.stop-all:
-	docker container stop $$(docker container ps -aq | tail -n +2 | awk '{printf $$1 " "}') || true
+	docker container stop $$(docker container ps -q | tail -n +2 | awk '{printf $$1 " "}') || true
 
 docker.restart:
 	sudo systemctl restart docker
@@ -181,8 +157,17 @@ docker.logs:
 	@docker logs -f $$(docker ps -a | fzf | awk '{print $$2}')
 
 docker.rm:
-	@type=$(call promtChoices,Type ,container|volume|image)
-	[ -n "$$type" ] && docker $$type rm $$(docker $$type ls -a | fzf | awk '{print $$2}')
+	@type=$(call PROMPT_CHOICES,Type ,container|image|volume)
+	[ -n "$$type" ] && make --silent "_docker.rm.$${type}"
+_docker.rm.container:
+	ctr=$$(docker container ls -a | fzf --cycle --prompt='Container to remove: ' | awk '{print $$1}')
+	[ -n "$$ctr" ] && docker container rm $$ctr && make --silent _docker.rm.container || true
+_docker.rm.image:
+	img=$$(docker image ls | fzf --cycle --prompt='Image to remove: ' | awk '{print $$3}')
+	[ -n "$$img" ] && docker image rm $$img && make --silent _docker.rm.image || true
+_docker.rm.volume:
+	vol=$$(docker volume ls | fzf --cycle --prompt='Volume to remove: ' | awk '{print $$2}')
+	[ -n "$$vol" ] && docker volume rm $$vol && make --silent _docker.rm.volume || true
 
 #========= DIFF ACTION ===================
 diff.json:
@@ -197,20 +182,20 @@ local.history:
 	history -w; tac ~/.bash_history | fzf +s --exact | tee -a ~/.bash_history | bash
 
 try.make:
-	@$(call _green, Trying debug of make files ...);
-	read -p "Enter variable: " VAR1;
-	$(call _yellow,Entered: $$VAR1);
+	@echo "$(call GREEN, Trying debug of make files ...)"
+	read -p "Enter variable: " VAR1
+	echo "$(call YELLOW,Entered: $$VAR1)"
 	if [[ -n "$${VAR1}" ]]; then
-		echo "$$VAR1 is not empty";
+		echo "$(call GREEN,$${VAR1}) is not empty";
 		if [[ "$${VAR1}" -gt 0 ]]; then
-			$(call _cyan,$$VAR1 is greater than 0);
+			echo "$(call BLUE,$${VAR1}) is greater than 0"
 		fi;
 	fi;
 	echo Done!
 
 cron.url:
 	@read -ep "Enter URL to crawl: " -i "https://google.com" URL;
-	@read -ep "Enter Interval in seconds: " -i "10" INTERVAL;
+	read -ep "Enter Interval in seconds: " -i "10" INTERVAL;
 	url=$$URL
 	folder="/tmp/$${url:8}"
 	mkdir -p "$${folder}" || exit 1
