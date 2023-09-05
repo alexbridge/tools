@@ -7,8 +7,9 @@
 
 SHELL := /bin/bash
 WORK_DIR := $(shell pwd)
-MAKE_FILE := $(WORK_DIR)/Makefile
-MMAKE := make --file=$(MAKE_FILE)
+#MAKE_FILE := $(WORK_DIR)/Makefile
+MAKE_FILE := $$HOME/Makefile
+MMAKE := make --file=$$HOME/Makefile
 
 # Text color output
 #0	Black 1 Red 2 Green 3 Yellow 4 Blue 5 Magenta 6 Cyan 7 White
@@ -41,6 +42,7 @@ _mmake.default:
 # Install each recipe as shell alias
 _mmake.install:
 	@echo "alias mmake='make --file=$(MAKE_FILE)'" > ~/.mmake_aliases;
+	grep FZF_DEFAULT_OPTS ~/.bashrc || echo "export FZF_DEFAULT_OPTS='--height 50% --layout=reverse --border --exact'" >> ~/.bashrc
 	grep -oE '^[a-z][a-zA-Z0-9.-]+:' Makefile | tr -d ':' | while read recipe; do echo "alias $$recipe='make --file=$(MAKE_FILE) $$recipe'" >> ~/.mmake_aliases; done;
 	grep '_mmake.install' ~/.bashrc > /dev/null || echo "make --file=$(MAKE_FILE) _mmake.install; [[ -f ~/.mmake_aliases ]] && source ~/.mmake_aliases" >> ~/.bashrc
 
@@ -123,6 +125,12 @@ git.merge:
 git.log:
 	@git log --oneline -10
 
+# Interactive NPM
+npmi:
+	# Interactive npm scripts
+	script=$$(jq -r '.scripts | to_entries[] | "\(.key) => \(.value)"' < package.json | sort | fzf | cut -d' ' -f1); \
+	[ -n "$$script" ] && npm run $$script
+
 # =============== VIDEOS =====================
 download.m3u8:
 	read -ep "Enter m3u8 URL: " URL;
@@ -138,6 +146,8 @@ json.select:
 	jq ".[] | select(.code == \"$$CODE\")" $$FILE
 
 #========= DOCKER ACTION ===================
+D_CONTAINERS := --format "table {{.ID}}\t{{.Names}}\t{{.Ports}}\t{{.State}}"
+
 docker.stop-all:
 	docker container stop $$(docker container ps -q | tail -n +2 | awk '{printf $$1 " "}') || true
 
@@ -145,29 +155,29 @@ docker.restart:
 	sudo systemctl restart docker
 
 docker.exec:
-	@docker exec -it $$(docker ps | fzf | awk '{print $$2}') bash
+	@docker exec -it $$(docker ps $(D_CONTAINERS) | fzf | awk '{print $$2}') bash
 
 docker.start:
-	@docker start $$(docker ps -a | fzf | awk '{print $$2}')
+	@docker start $$(docker ps -a $(D_CONTAINERS) | fzf | awk '{print $$2}')
 
 docker.stop:
-	@docker stop $$(docker ps | fzf | awk '{print $$2}')
+	@docker stop $$(docker ps $(D_CONTAINERS) | fzf | awk '{print $$2}')
 
 docker.logs:
-	@docker logs -f $$(docker ps -a | fzf | awk '{print $$2}')
+	@docker logs -f $$(docker ps -a $(D_CONTAINERS) | fzf | awk '{print $$2}')
 
 docker.rm:
 	@type=$(call PROMPT_CHOICES,Type ,container|image|volume)
-	[ -n "$$type" ] && make --silent "_docker.rm.$${type}"
+	[ -n "$$type" ] && $(MMAKE) --silent "_docker.rm.$${type}"
 _docker.rm.container:
 	ctr=$$(docker container ls -a | fzf --cycle --prompt='Container to remove: ' | awk '{print $$1}')
-	[ -n "$$ctr" ] && docker container rm $$ctr && make --silent _docker.rm.container || true
+	[ -n "$$ctr" ] && docker container rm $$ctr && $(MMAKE) --silent _docker.rm.container || true
 _docker.rm.image:
 	img=$$(docker image ls | fzf --cycle --prompt='Image to remove: ' | awk '{print $$3}')
-	[ -n "$$img" ] && docker image rm $$img && make --silent _docker.rm.image || true
+	[ -n "$$img" ] && docker image rm $$img && $(MMAKE) --silent _docker.rm.image || true
 _docker.rm.volume:
 	vol=$$(docker volume ls | fzf --cycle --prompt='Volume to remove: ' | awk '{print $$2}')
-	[ -n "$$vol" ] && docker volume rm $$vol && make --silent _docker.rm.volume || true
+	[ -n "$$vol" ] && docker volume rm $$vol && $(MMAKE) --silent _docker.rm.volume || true
 
 #========= DIFF ACTION ===================
 diff.json:
