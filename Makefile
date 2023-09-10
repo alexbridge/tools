@@ -31,6 +31,10 @@ LATEST_TAG = $$(git for-each-ref --sort=-taggerdate --count=1 --format '%(refnam
 THE_BRANCH = $$(git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/')
 REMOTE_BRANCH = $$(git fetch origin -p; git branch -r | fzf --prompt '$(1): ' | tr -d '[:space:]' | tr -d '*')
 
+# FZF
+FZF_DEFAULT_OPTS ?='--height 50% --layout=reverse --border --exact'
+FZF_MULTI = --cycle --multi --bind="space:toggle"
+
 .ONESHELL:
 .DEFAULT:
 _mmake.default:
@@ -170,13 +174,13 @@ docker.rm:
 	@type=$(call PROMPT_CHOICES,Type ,container|image|volume)
 	[ -n "$$type" ] && $(MMAKE) --silent "_docker.rm.$${type}"
 _docker.rm.container:
-	ctr=$$(docker container ls -a | fzf --cycle --prompt='Container to remove: ' | awk '{print $$1}')
+	ctr=$$(docker container ls -a | fzf $(FZF_MULTI) --prompt='Container to remove: ' | awk '{print $$1}')
 	[ -n "$$ctr" ] && docker container rm $$ctr && $(MMAKE) --silent _docker.rm.container || true
 _docker.rm.image:
-	img=$$(docker image ls | fzf --cycle --prompt='Image to remove: ' | awk '{print $$3}')
+	img=$$(docker image ls | fzf $(FZF_MULTI) --prompt='Image to remove: ' | awk '{print $$3}')
 	[ -n "$$img" ] && docker image rm $$img && $(MMAKE) --silent _docker.rm.image || true
 _docker.rm.volume:
-	vol=$$(docker volume ls | fzf --cycle --prompt='Volume to remove: ' | awk '{print $$2}')
+	vol=$$(docker volume ls | fzf $(FZF_MULTI) --prompt='Volume to remove: ' | awk '{print $$2}')
 	[ -n "$$vol" ] && docker volume rm $$vol && $(MMAKE) --silent _docker.rm.volume || true
 
 #========= DIFF ACTION ===================

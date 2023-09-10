@@ -2,24 +2,17 @@
 
 Different make recipes for day to day development: git, docker, shell
 
-#### Usage in project
+#### Live example
+![Live Example](./Make.usage.gif)
 
-- Clone
-- copy Makefile to your project directory
-
-#### Usage for user globally
+#### Usage
 
 - clone 
-- copy Makefile to user directory
+- copy Makefile to user directory, eg `$HOME/Makefile`
 - create alias 
 ```
 alias mmake='make --file=~/Makefile
 ```
-- use
+- use `mmake`
     - by default all available recipes will be listed with fzf
 
-```
-mmake
-```
-
-![Live Example](./Make.usage.gif)
