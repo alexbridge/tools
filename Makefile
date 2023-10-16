@@ -64,6 +64,10 @@ _prompt:
 git.latest.tag:
 	echo "Latest git tag: $(LATEST_TAG)"
 
+git.ls:
+	@git fetch origin -p
+	git branch -r
+
 git.branch:
 	@echo "$(call GREEN,Creating new git branch)"
 	read -ep "Enter branch name to create: " -i "feature/" BRANCH;
@@ -129,6 +133,9 @@ git.merge:
 git.log:
 	@git log --oneline -10
 
+git.rm:
+	@git branch -D $$(git branch | fzf $(FZF_MULTI) | awk '{print $$1}')
+
 # Interactive NPM
 npmi:
 	# Interactive npm scripts
@@ -159,13 +166,13 @@ docker.restart:
 	sudo systemctl restart docker
 
 docker.exec:
-	@docker exec -it $$(docker ps $(D_CONTAINERS) | fzf | awk '{print $$2}') bash
+	@docker exec -it $$(docker ps $(D_CONTAINERS) | fzf | awk '{print $$2}') /bin/sh
 
 docker.start:
-	@docker start $$(docker ps -a $(D_CONTAINERS) | fzf | awk '{print $$2}')
+	@docker start $$(docker ps -a $(D_CONTAINERS) | fzf $(FZF_MULTI) | awk '{print $$2}')
 
 docker.stop:
-	@docker stop $$(docker ps $(D_CONTAINERS) | fzf | awk '{print $$2}')
+	@docker stop $$(docker ps $(D_CONTAINERS) | fzf $(FZF_MULTI) | awk '{print $$2}')
 
 docker.logs:
 	@docker logs -f $$(docker ps -a $(D_CONTAINERS) | fzf | awk '{print $$2}')
