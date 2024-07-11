@@ -117,7 +117,15 @@ git.archive:
 	echo Done!
 
 git.stash:
-	@git stash -m "$(THE_BRANCH)"; git status
+	@read -p "Stash message: [$(THE_BRANCH)]: " message;
+	@git stash -m "$(THE_BRANCH) $${message}"; git status
+
+git.stash.apply:
+	@stash=$$(git stash list | fzf --preview "git stash show -p \$$(echo {} | awk '{print \$$1}' | tr -d ':')" | awk '{print $$1}' | tr -d ':')
+	[ -n "$${stash}" ] && git stash apply $$stash
+git.stash.drop:
+	@stash=$$(git stash list | fzf --preview "git stash show -p \$$(echo {} | awk '{print \$$1}' | tr -d ':')" | awk '{print $$1}' | tr -d ':')
+	[ -n "$${stash}" ] && git stash dtop $$stash
 
 git.merge:
 	@echo "$(call GREEN, Merging remote changes)"
@@ -164,19 +172,18 @@ docker.stop-all:
 
 docker.restart:
 	sudo systemctl restart docker
-
 docker.exec:
 	@docker exec -it $$(docker ps $(D_CONTAINERS) | fzf | awk '{print $$2}') /bin/sh
-
 docker.start:
 	@docker start $$(docker ps -a $(D_CONTAINERS) | fzf $(FZF_MULTI) | awk '{print $$2}')
-
 docker.stop:
 	@docker stop $$(docker ps $(D_CONTAINERS) | fzf $(FZF_MULTI) | awk '{print $$2}')
-
 docker.logs:
 	@docker logs -f $$(docker ps -a $(D_CONTAINERS) | fzf | awk '{print $$2}')
-
+docker.inspect:
+	@docker inspect $$(docker ps | fzf | awk '{print $$2}')
+docker.inspect.exit:
+	@docker inspect $$(docker ps -a | fzf | awk '{print $$2}') --format='{{.State.ExitCode}}'
 docker.rm:
 	@type=$(call PROMPT_CHOICES,Type ,container|image|volume)
 	[ -n "$$type" ] && $(MMAKE) --silent "_docker.rm.$${type}"
@@ -226,4 +233,11 @@ cron.url:
 		echo -ne "Done $${i} / 1000\r"
 		sleep $$INTERVAL 
 	done
+gradle.run.changed.tests:
+	@read -p "Diff or Show ? (diff): " MODE;
+	@changed=$$(git $$MODE --name-only | grep modules | grep java \
+	| awk '{m=substr($$0, 9, index($$0, "src") - 10); print m":test", m":integTest"}' \
+	| sort --unique | tr '/\n' '- ')
+	./gradlew $$changed
+	echo -e "TESTS EXECUTED FOR MODULES:\n$$(echo "$$changed" | tr ' ' '\n\t')";
 
