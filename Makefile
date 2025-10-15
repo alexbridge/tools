@@ -32,7 +32,7 @@ THE_BRANCH = $$(git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/
 REMOTE_BRANCH = $$(git fetch origin -p; git branch -r | fzf --prompt '$(1): ' | tr -d '[:space:]' | tr -d '*')
 
 # FZF
-FZF_DEFAULT_OPTS ?='--height 50% --layout=reverse --border --exact'
+FZF_DEFAULT_OPTS ?='--height 50% --layout=reverse --border --exact --bind 'ctrl-y:execute-silent(xclip -selection clipboard {})''
 FZF_MULTI = --cycle --multi --bind="space:toggle"
 
 .ONESHELL:
@@ -155,7 +155,12 @@ download.m3u8:
 	read -ep "Enter m3u8 URL: " URL;
 	read -ep "Enter file name (withoum mp4 sufux): " FILE;
 	ffmpeg -protocol_whitelist file,http,https,tcp,tls,crypto -i $$URL -c copy $$FILE.mp4
-	printf '\a Download is done'
+	printf '\a Download \a is \a done \a'
+mp4-compress-all:
+	for f in *.mp4; do temp="temp_$f"; ffmpeg -i "$f" -c:v libx264 -crf 28 -c:a copy -y "$temp" && mv -f "$temp" "$f"; done
+mp4-compress-single:
+	read -ep "Enter file to compress: " FILE;
+	ffmpeg -i $$FILE -c:v libx264 -crf 28 -c:a copy "$${FILE}.compressed.mp4"
 
 # =============== JSON =====================
 json.select:
@@ -165,7 +170,7 @@ json.select:
 	jq ".[] | select(.code == \"$$CODE\")" $$FILE
 
 #========= DOCKER ACTION ===================
-D_CONTAINERS := --format "table {{.ID}}\t{{.Names}}\t{{.Ports}}\t{{.State}}"
+D_CONTAINERS := --format "table {{.ID}}\t{{.Names}}\t{{.State}}\t{{.Networks}}\t{{ printf \"%.50s\" .Ports}}"
 
 docker.stop-all:
 	docker container stop $$(docker container ps -q | tail -n +2 | awk '{printf $$1 " "}') || true
@@ -173,9 +178,14 @@ docker.stop-all:
 docker.restart:
 	sudo systemctl restart docker
 docker.exec:
-	@docker exec -it $$(docker ps $(D_CONTAINERS) | fzf | awk '{print $$2}') /bin/sh
+	@docker exec -it $$(docker ps $(D_CONTAINERS) | fzf | awk '{print $$2}') bash
+
+docker.inspect:
+	@docker inspect $$(docker ps $(D_CONTAINERS) | fzf | awk '{print $$2}')
 docker.start:
-	@docker start $$(docker ps -a $(D_CONTAINERS) | fzf $(FZF_MULTI) | awk '{print $$2}')
+	@container=$$(docker ps -a $(D_CONTAINERS) | fzf $(FZF_MULTI) | awk '{print $$2}')
+	@docker start $$container
+	#docker logs -f $$(echo $$container | awk '{print $$1}')
 docker.stop:
 	@docker stop $$(docker ps $(D_CONTAINERS) | fzf $(FZF_MULTI) | awk '{print $$2}')
 docker.logs:
@@ -184,18 +194,24 @@ docker.inspect:
 	@docker inspect $$(docker ps | fzf | awk '{print $$2}')
 docker.inspect.exit:
 	@docker inspect $$(docker ps -a | fzf | awk '{print $$2}') --format='{{.State.ExitCode}}'
+docker.ps:
+	@docker ps $(D_CONTAINERS)
+
 docker.rm:
-	@type=$(call PROMPT_CHOICES,Type ,container|image|volume)
+	@type=$(call PROMPT_CHOICES,Type ,container|image|volume|network)
 	[ -n "$$type" ] && $(MMAKE) --silent "_docker.rm.$${type}"
 _docker.rm.container:
-	ctr=$$(docker container ls -a | fzf $(FZF_MULTI) --prompt='Container to remove: ' | awk '{print $$1}')
-	[ -n "$$ctr" ] && docker container rm $$ctr && $(MMAKE) --silent _docker.rm.container || true
+	ctr=$$(docker container ls -a $(D_CONTAINERS) | fzf $(FZF_MULTI) --prompt='Container to remove: ' | awk '{print $$1}')
+	[ -n "$$ctr" ] && docker container rm $$ctr && $(MMAKE) --silent docker.rm || true
 _docker.rm.image:
 	img=$$(docker image ls | fzf $(FZF_MULTI) --prompt='Image to remove: ' | awk '{print $$3}')
-	[ -n "$$img" ] && docker image rm $$img && $(MMAKE) --silent _docker.rm.image || true
+	[ -n "$$img" ] && docker image rm $$img && $(MMAKE) --silent docker.rm || true
 _docker.rm.volume:
 	vol=$$(docker volume ls | fzf $(FZF_MULTI) --prompt='Volume to remove: ' | awk '{print $$2}')
-	[ -n "$$vol" ] && docker volume rm $$vol && $(MMAKE) --silent _docker.rm.volume || true
+	[ -n "$$vol" ] && docker volume rm $$vol && $(MMAKE) --silent docker.rm || true
+_docker.rm.network:
+	vol=$$(docker network ls | fzf $(FZF_MULTI) --prompt='Network to remove: ' | awk '{print $$2}')
+	[ -n "$$vol" ] && docker network rm $$vol && $(MMAKE) --silent docker.rm || true
 
 #========= DIFF ACTION ===================
 diff.json:
