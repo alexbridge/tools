@@ -1,0 +1,1 @@
+ mysql -u root -proot -Nse 'show tables' DB | while read table; do mysql -u root -proot -e "SET FOREIGN_KEY_CHECKS=0; drop table $table" DB; done

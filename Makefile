@@ -153,8 +153,8 @@ npmi:
 # =============== VIDEOS =====================
 download.m3u8:
 	read -ep "Enter m3u8 URL: " URL;
-	read -ep "Enter file name (withoum mp4 sufux): " FILE;
-	ffmpeg -protocol_whitelist file,http,https,tcp,tls,crypto -i $$URL -c copy $$FILE.mp4
+	read -ep "Enter file name (with extension): " FILE;
+	ffmpeg -protocol_whitelist file,http,https,tcp,tls,crypto -i $$URL -c copy $$FILE
 	printf '\a Download \a is \a done \a'
 mp4-compress-all:
 	for f in *.mp4; do temp="temp_$f"; ffmpeg -i "$f" -c:v libx264 -crf 28 -c:a copy -y "$temp" && mv -f "$temp" "$f"; done
