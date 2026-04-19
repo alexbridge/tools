@@ -330,7 +330,9 @@ cleanup-ubuntu:
 	while read snapname revision; do sudo snap remove "$$snapname" --revision="$$revision";	done
 	echo "Used DF $$(df -h | grep '/dev' | awk '{print $$3}')"
 cleanup-npm:
-	find . -name "node_modules" -type d -prune -exec rm -rf '{}' +
+	cd /home
+	read -p "Where to look node_modules " NPM_ROOT
+	find $$NPM_ROOT -name "node_modules" -type d -prune -exec rm -rf '{}' +
 backup-ubuntu:
 	dconf dump /com/gexperts/Tilix/ > ~/programs/tilix-settings.conf
 	zip --recurse-paths --quiet Ubuntu.Backup.zip \
