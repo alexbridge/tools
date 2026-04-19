@@ -24,11 +24,12 @@ WHITE = $$(tput setaf 7; echo -n "$(1)"; tput sgr0)
 YES := yes
 NO := no
 PROMPT_YES_NO = $$(readarray -d '|' -t choices <<<"$(YES)|$(NO)"; printf "%s\n" "$${choices[@]}" | fzf --prompt='$(1): ' --header-first)
+PROMPT_NO_YES = $$(readarray -d '|' -t choices <<<"$(NO)|$(YES)"; printf "%s\n" "$${choices[@]}" | fzf --prompt='$(1): ' --header-first)
 PROMPT_CHOICES = $$(readarray -d '|' -t choices <<<"$(2)"; printf "%s\n" "$${choices[@]}" | fzf --prompt='$(1): ' --header-first)
 
 # Git variables
 LATEST_TAG = $$(git for-each-ref --sort=-taggerdate --count=1 --format '%(refname:short)' refs/tags)
-THE_BRANCH = $$(git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/')
+THE_BRANCH = $$(git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')
 REMOTE_BRANCH = $$(git fetch origin -p; git branch -r | fzf --prompt '$(1): ' | tr -d '[:space:]' | tr -d '*')
 
 # FZF
@@ -46,13 +47,15 @@ _mmake.default:
 # Install each recipe as shell alias
 _mmake.install:
 	@echo "alias mmake='make --file=$(MAKE_FILE)'" > ~/.mmake_aliases;
-	grep FZF_DEFAULT_OPTS ~/.bashrc || echo "export FZF_DEFAULT_OPTS='--height 50% --layout=reverse --border --exact'" >> ~/.bashrc
-	grep -oE '^[a-z][a-zA-Z0-9.-]+:' Makefile | tr -d ':' | while read recipe; do echo "alias $$recipe='make --file=$(MAKE_FILE) $$recipe'" >> ~/.mmake_aliases; done;
+	grep -oE '^[a-z][a-zA-Z0-9.-]+:' $(MAKE_FILE) | tr -d ':' | while read recipe; do echo "alias $$recipe='make --file=$(MAKE_FILE) $$recipe'" >> ~/.mmake_aliases; done;
 	grep '_mmake.install' ~/.bashrc > /dev/null || echo "make --file=$(MAKE_FILE) _mmake.install; [[ -f ~/.mmake_aliases ]] && source ~/.mmake_aliases" >> ~/.bashrc
+	grep 'FZF_DEFAULT_OPTS' ~/.bashrc || echo "export FZF_DEFAULT_OPTS='--height 50% --layout=reverse --border --exact'" >> ~/.bashrc
 
 _echo.vars:
 	@echo "Working Directory: $(call BLUE,$(WORK_DIR))"
 	echo "Makefile to use: $(call BLUE,$(MAKE_FILE))"
+	echo "Bash PID: $$(echo $$$$)"
+	echo "Git Branch: $(THE_BRANCH)"
 _prompt:
 	@RES=$(call PROMPT_YES_NO,Choose)
 	if [[ "$$RES" == "$(YES)" ]]; then echo 'YES Selected'; fi
@@ -73,7 +76,7 @@ git.branch:
 	read -ep "Enter branch name to create: " -i "feature/" BRANCH;
 	SOURCE_BRANCH=$(call REMOTE_BRANCH,Source branch);
 	SOURCE_BRANCH="$${SOURCE_BRANCH#origin/}";
-	STASH=$(call PROMPT_YES_NO,Stash changes);
+	STASH=$(call PROMPT_NO_YES,Stash changes);
 	[[ "$$STASH" == "$(YES)" ]] && git stash;
 	git reset --hard; git fetch origin -p; git checkout origin/$$SOURCE_BRANCH; git branch -D $$BRANCH;
 	git checkout -b $$BRANCH;
@@ -90,14 +93,14 @@ git.reset:
 	BRANCH="$${BRANCH#origin/}"
 	if [[ -n "$$BRANCH" ]]; then
 		echo "Reset to given branch: $${BRANCH}";
-		STASH=$(call PROMPT_YES_NO,Stash changes);
+		STASH=$(call PROMPT_NO_YES,Stash changes);
 		[[ "$$STASH" == "$(YES)" ]] && git stash;
 		git reset --hard; git checkout "origin/$${BRANCH}"; git branch -D $$BRANCH;
 		git checkout -b $$BRANCH;
 		[[ "$$STASH" == "$(YES)" ]] && git stash pop;
 		echo '--------------------------------------------------------------';
 		git show | head -n 5;
-	echo Done!
+		echo Done!
 	fi
 
 git.tag:
@@ -118,14 +121,17 @@ git.archive:
 
 git.stash:
 	@read -p "Stash message: [$(THE_BRANCH)]: " message;
-	@git stash -m "$(THE_BRANCH) $${message}"; git status
+	git add .
+	git stash -m "$${message}: $(THE_BRANCH)"; git status
 
 git.stash.apply:
 	@stash=$$(git stash list | fzf --preview "git stash show -p \$$(echo {} | awk '{print \$$1}' | tr -d ':')" | awk '{print $$1}' | tr -d ':')
 	[ -n "$${stash}" ] && git stash apply $$stash
+	DROP_STASH=$(call PROMPT_YES_NO,Drop stash?);
+	[[ "$$DROP_STASH" == "$(YES)" ]] && git stash drop $$stash;
 git.stash.drop:
 	@stash=$$(git stash list | fzf --preview "git stash show -p \$$(echo {} | awk '{print \$$1}' | tr -d ':')" | awk '{print $$1}' | tr -d ':')
-	[ -n "$${stash}" ] && git stash dtop $$stash
+	[ -n "$${stash}" ] && git stash drop $$stash
 
 git.merge:
 	@echo "$(call GREEN, Merging remote changes)"
@@ -136,7 +142,33 @@ git.merge:
 	if [[ -n "$$REMOTE_BRANCH" ]]; then
 		echo "Merging $(call BLUE, origin/$${REMOTE_BRANCH})";
 		git merge origin/$$REMOTE_BRANCH;
-	fi	
+	fi
+git.rebase:
+	@echo "$(call GREEN, Rebasing remote changes)"
+	git fetch origin -p;
+	echo '==============================================';
+	REMOTE_BRANCH=$(call REMOTE_BRANCH,Remote branch to rebase);
+	REMOTE_BRANCH="$${REMOTE_BRANCH#origin/}"
+	if [[ -n "$$REMOTE_BRANCH" ]]; then
+		cmd="git rebase origin/$${REMOTE_BRANCH}"
+		if [[ "$$REMOTE_BRANCH" =~ "feature" ]]; then
+			echo "Select base for origin/$${REMOTE_BRANCH}"
+			base=$$(git log --oneline -10 | fzf | cut -d' ' -f1)
+			cmd+=" --onto $${base}"
+		fi
+		echo "Rebasing $(call BLUE, origin/$${REMOTE_BRANCH})";
+		$$cmd
+	fi
+git.cherry.prod:
+	@echo "$(call GREEN, Cherry-pick to prod)"
+	read -ep "Commit to cherry-pick: " COMMIT;
+	git cherry-pick $$COMMIT;
+	echo '=== COMPARE local TO PROD =======================';
+	git log origin/prod..HEAD --oneline
+	echo '=== --------------------- =======================';
+	echo '=== COMPARE PROD to local =======================';
+	git log HEAD..origin/prod --oneline
+	echo '=== --------------------- =======================';
 
 git.log:
 	@git log --oneline -10
@@ -170,48 +202,53 @@ json.select:
 	jq ".[] | select(.code == \"$$CODE\")" $$FILE
 
 #========= DOCKER ACTION ===================
-D_CONTAINERS := --format "table {{.ID}}\t{{.Names}}\t{{.State}}\t{{.Networks}}\t{{ printf \"%.50s\" .Ports}}"
+DOCKER_FORMAT := --format "table {{.ID}} \t{{.Names}}\t{{.Status}}\t{{ printf \"%.40s\" .Ports}}"
+DOCKER_CYCLE_MULTI := --cycle --multi --bind="space:toggle"
 
 docker.stop-all:
 	docker container stop $$(docker container ps -q | tail -n +2 | awk '{printf $$1 " "}') || true
 
 docker.restart:
-	sudo systemctl restart docker
+	sudo systemctl restart docker &>/dev/null || true
+	sudo systemctl status docker | head -n 10
+
+docker.ps:
+	@docker ps $(DOCKER_FORMAT)
+
 docker.exec:
-	@docker exec -it $$(docker ps $(D_CONTAINERS) | fzf | awk '{print $$2}') bash
+	@container=$$(docker ps $(DOCKER_FORMAT) | fzf | awk '{print $$2}'); \
+	docker exec -it $$container bash -c 'pwd; ls -la; sh' \
+	|| docker exec -it $$container sh -c 'pwd; ls -la; sh'
 
 docker.inspect:
-	@docker inspect $$(docker ps $(D_CONTAINERS) | fzf | awk '{print $$2}')
-docker.start:
-	@container=$$(docker ps -a $(D_CONTAINERS) | fzf $(FZF_MULTI) | awk '{print $$2}')
-	@docker start $$container
-	#docker logs -f $$(echo $$container | awk '{print $$1}')
-docker.stop:
-	@docker stop $$(docker ps $(D_CONTAINERS) | fzf $(FZF_MULTI) | awk '{print $$2}')
-docker.logs:
-	@docker logs -f $$(docker ps -a $(D_CONTAINERS) | fzf | awk '{print $$2}')
-docker.inspect:
-	@docker inspect $$(docker ps | fzf | awk '{print $$2}')
+	@docker inspect $$(docker ps $(DOCKER_FORMAT) | fzf | awk '{print $$2}')
 docker.inspect.exit:
-	@docker inspect $$(docker ps -a | fzf | awk '{print $$2}') --format='{{.State.ExitCode}}'
-docker.ps:
-	@docker ps $(D_CONTAINERS)
+	@docker inspect $$(docker ps -a $(DOCKER_FORMAT) | fzf | awk '{print $$2}') --format='{{.State.ExitCode}}'
+
+docker.start:
+	@docker start $$(docker ps -a $(DOCKER_FORMAT) | fzf $(DOCKER_CYCLE_MULTI) | awk '{print $$1}')
+
+docker.stop:
+	@docker stop $$(docker ps $(DOCKER_FORMAT) | fzf $(DOCKER_CYCLE_MULTI) | awk '{print $$1}')
+
+docker.logs:
+	@docker logs -f $$(docker ps -a $(DOCKER_FORMAT) | fzf | awk '{print $$2}')
 
 docker.rm:
 	@type=$(call PROMPT_CHOICES,Type ,container|image|volume|network)
 	[ -n "$$type" ] && $(MMAKE) --silent "_docker.rm.$${type}"
 _docker.rm.container:
-	ctr=$$(docker container ls -a $(D_CONTAINERS) | fzf $(FZF_MULTI) --prompt='Container to remove: ' | awk '{print $$1}')
-	[ -n "$$ctr" ] && docker container rm $$ctr && $(MMAKE) --silent docker.rm || true
+	ctr=$$(docker container ls -a | fzf $(DOCKER_CYCLE_MULTI) --prompt='Container to remove (space for multiselect): ' | awk '{print $$1}')
+	[ -n "$$ctr" ] && docker container rm $$ctr
 _docker.rm.image:
-	img=$$(docker image ls | fzf $(FZF_MULTI) --prompt='Image to remove: ' | awk '{print $$3}')
-	[ -n "$$img" ] && docker image rm $$img && $(MMAKE) --silent docker.rm || true
+	img=$$(docker image ls | fzf $(DOCKER_CYCLE_MULTI) --prompt='Image to remove (space for multiselect): ' | awk '{print $$3}')
+	[ -n "$$img" ] && docker image rm $$img
 _docker.rm.volume:
-	vol=$$(docker volume ls | fzf $(FZF_MULTI) --prompt='Volume to remove: ' | awk '{print $$2}')
-	[ -n "$$vol" ] && docker volume rm $$vol && $(MMAKE) --silent docker.rm || true
+	vol=$$(docker volume ls | fzf $(DOCKER_CYCLE_MULTI) --prompt='Volume to remove (space for multiselect): ' | awk '{print $$2}')
+	[ -n "$$vol" ] && docker volume rm $$vol
 _docker.rm.network:
-	vol=$$(docker network ls | fzf $(FZF_MULTI) --prompt='Network to remove: ' | awk '{print $$2}')
-	[ -n "$$vol" ] && docker network rm $$vol && $(MMAKE) --silent docker.rm || true
+	vol=$$(docker network ls | fzf $(DOCKER_CYCLE_MULTI) --prompt='Network to remove (space for multiselect): ' | awk '{print $$2}')
+	[ -n "$$vol" ] && docker network rm $$vol
 
 #========= DIFF ACTION ===================
 diff.json:
@@ -223,7 +260,10 @@ diff.json:
 
 # ========= MISC
 local.history:
-	history -w; tac ~/.bash_history | fzf +s --exact | tee -a ~/.bash_history | bash
+	@history | sort --unique > ~/.local_history2
+	mv ~/.local_history2 ~/.local_history
+	cat ~/.local_history <(cat ~/.bash_history | sort --unique) | \
+	fzf --no-sort --exact | tee -a ~/.local_history | tee >(xclip -selection clipboard) | bash
 
 try.make:
 	@echo "$(call GREEN, Trying debug of make files ...)"
@@ -236,6 +276,14 @@ try.make:
 		fi;
 	fi;
 	echo Done!
+cddd:
+	has_dot_git() { while read -r line; do [[ -d "$${line}/.git" ]] && echo "$${line}"; done; }
+	f=$$(find . -maxdepth 3 -type d -not -path "." | has_dot_git | fzf)
+	[[ -n "$${f}" ]] && cd "$$(pwd)/$${f}"
+
+random-password:
+	openssl rand -base64 16
+
 
 cron.url:
 	@read -ep "Enter URL to crawl: " -i "https://google.com" URL;
@@ -256,4 +304,53 @@ gradle.run.changed.tests:
 	| sort --unique | tr '/\n' '- ')
 	./gradlew $$changed
 	echo -e "TESTS EXECUTED FOR MODULES:\n$$(echo "$$changed" | tr ' ' '\n\t')";
+update-programs-ubuntu:
+	sudo apt-get install google-chrome-stable
 
+programs-reset:
+	rm ~/.config/bcompare/registry.dat
+cleanup-ubuntu:
+	echo "Used DF $$(df -h | grep '/dev' | awk '{print $$3}')"
+	sudo find /var/log -type f -mtime +3 -delete
+	sudo find /home -name '*.log' -mtime +3 -delete
+	docker system prune -af
+	docker volume prune -af
+	sudo apt update || true
+	sudo apt autoremove --purge -y || true
+	sudo apt clean || true
+	sudo apt autoclean || true
+	sudo rm -rf /var/cache/apt/archives/* || true
+	sudo rm -rf /var/cache/apt/*.bin || true
+	sudo apt install deborphan || true
+	sudo deborphan | xargs -r sudo apt -y remove --purge || true
+	sudo journalctl --vacuum-size=1 || true
+	sudo rm -rf /var/cache/apt/archives/* || true
+	rm -rf ~/.cache/* || true
+	snap list --all | awk '/disabled/{print $$1, $$3}' | \
+	while read snapname revision; do sudo snap remove "$$snapname" --revision="$$revision";	done
+	echo "Used DF $$(df -h | grep '/dev' | awk '{print $$3}')"
+backup-ubuntu:
+	dconf dump /com/gexperts/Tilix/ > ~/programs/tilix-settings.conf
+	zip --recurse-paths --quiet Ubuntu.Backup.zip \
+	~/Makefile ~/.ssh \
+	~/.bash_profile ~/.bashrc ~/.gitconfig \
+	~/.aws \
+	~/.config/bcompare ~/.config/JetBrains ~/.config/KeePass ~/.config/sublime-text ~/.config/git \
+	~/.config/systemd \
+	~/docker.install.sh get-docker.sh gpg-no-tty.sh \
+	~/.docker/config.json ~/programs/c24.kdbx ~/programs/bookmarks.html \
+	~/bash_completion.d ~/programs/tilix-settings.conf ~/programs/chrome_passwords.csv \
+	~/programs/dict-DE-de \
+	~/Downloads/jira ~/Downloads/Postman ~/Documents/Trainings ~/Work \
+	~/claude \
+	/opt/install-intellij.sh \
+	$$(find "$${HOME}/IdeaProjects" -type f -wholename '*/.idea/workspace.xml') \
+	$$(find "$${HOME}/programs" -type f -name 'CLAUDE.md')
+	du -h Ubuntu.Backup.zip
+	cp Ubuntu.Backup.zip /mnt/d/_Backup/Ubuntu.Backup.zip && rm Ubuntu.Backup.zip
+gpg-key-gen:
+	gpg --gen-key
+	gpg --list-secret-keys --keyid-format LONG
+	read -p "Enter key: " KEY
+	gpg --armor --export $$KEY
+	echo "Replace key in ~/.gitconfig"
