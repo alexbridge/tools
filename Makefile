@@ -329,6 +329,8 @@ cleanup-ubuntu:
 	snap list --all | awk '/disabled/{print $$1, $$3}' | \
 	while read snapname revision; do sudo snap remove "$$snapname" --revision="$$revision";	done
 	echo "Used DF $$(df -h | grep '/dev' | awk '{print $$3}')"
+cleanup-npm:
+	find . -name "node_modules" -type d -prune -exec rm -rf '{}' +
 backup-ubuntu:
 	dconf dump /com/gexperts/Tilix/ > ~/programs/tilix-settings.conf
 	zip --recurse-paths --quiet Ubuntu.Backup.zip \
