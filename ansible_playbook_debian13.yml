@@ -89,8 +89,13 @@
 
     - name: Remove conflicting vscode repo if exists
       file:
-        path: /etc/apt/sources.list.d/vscode.list
+        path: "{{ item }}"
         state: absent
+      loop:
+        - /etc/apt/sources.list.d/vscode.list
+        - /etc/apt/sources.list.d/vscode.sources
+        - /usr/share/keyrings/microsoft.gpg
+        - /etc/apt/keyrings/microsoft.gpg
 
     - name: Add Microsoft GPG key
       shell: |
