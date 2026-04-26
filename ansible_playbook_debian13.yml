@@ -6,6 +6,8 @@
 
   vars:
     current_user: "{{ ansible_user_id }}"
+    git_user_name: "Your Name"
+    git_user_email: "you@example.com"
 
   tasks:
 
@@ -17,6 +19,55 @@
           - tree
           - curl
           - rsync
+          - git
+        state: present
+        update_cache: true
+
+    # --- git config ---
+    - name: Set git user name
+      git_config:
+        name: user.name
+        value: "{{ git_user_name }}"
+        scope: global
+      become_user: "{{ current_user }}"
+
+    - name: Set git user email
+      git_config:
+        name: user.email
+        value: "{{ git_user_email }}"
+        scope: global
+      become_user: "{{ current_user }}"
+
+    - name: Set git default branch to main
+      git_config:
+        name: init.defaultBranch
+        value: main
+        scope: global
+      become_user: "{{ current_user }}"
+
+    # --- vscode: microsoft repo ---
+    - name: Install vscode apt dependencies
+      apt:
+        name:
+          - wget
+          - gpg
+        state: present
+
+    - name: Add Microsoft GPG key
+      shell: |
+        wget -qO- https://packages.microsoft.com/keys/microsoft.asc         | gpg --dearmor > /etc/apt/keyrings/microsoft.gpg
+      args:
+        creates: /etc/apt/keyrings/microsoft.gpg
+
+    - name: Add vscode apt repository
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/code stable main"
+        filename: vscode
+        state: present
+
+    - name: Install vscode
+      apt:
+        name: code
         state: present
         update_cache: true
 
