@@ -1,0 +1,22 @@
+# ansible-playbook docker-reset-overlay2.yml --ask-become-pass
+# WARNING: Wipes all local Docker images, containers, and volumes
+---
+- name: Reset Docker overlay2 storage
+  hosts: localhost
+  become: true
+
+  tasks:
+    - name: Stop docker service
+      systemd:
+        name: docker
+        state: stopped
+
+    - name: Wipe corrupt overlay2 storage
+      file:
+        path: /var/lib/docker/overlay2
+        state: absent
+
+    - name: Start docker service
+      systemd:
+        name: docker
+        state: started

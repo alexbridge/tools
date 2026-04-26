@@ -122,6 +122,22 @@
           PROMPT_DIRTRIM=1
       become_user: "{{ current_user }}"
 
+    # --- bashrc: bash completion ---
+    - name: Configure bash completion in .bashrc
+      blockinfile:
+        path: "/home/{{ current_user }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - bash completion"
+        block: |
+          # enable programmable completion features
+          if ! shopt -oq posix; then
+            if [ -f /usr/share/bash-completion/bash_completion ]; then
+              . /usr/share/bash-completion/bash_completion
+            elif [ -f /etc/bash_completion ]; then
+              . /etc/bash_completion
+            fi
+          fi
+      become_user: "{{ current_user }}"
+
     # --- bashrc: navigation aliases ---
     - name: Configure navigation aliases in .bashrc
       blockinfile:

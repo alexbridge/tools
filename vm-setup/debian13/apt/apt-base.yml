@@ -21,7 +21,9 @@
           - make
           - fzf
           - xclip
+          - bash-completion
           - ca-certificates
           - imagemagick
+          - jq
         state: present
         update_cache: true

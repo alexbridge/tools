@@ -19,7 +19,9 @@ apps-bcompare:
 apps-chrome:
 	ansible-playbook apps/apps-chrome.yml --ask-become-pass
 apps-docker:
-	ansible-playbook apps/apps-docker.yml --ask-become-pass
+	ansible-playbook docker/apps-docker.yml --ask-become-pass
+docker-reset-overlay2:
+	ansible-playbook docker/reset-overlay2.yml --ask-become-pass
 apps-tilix:
 	ansible-playbook apps/apps-tilix.yml --ask-become-pass
 apps-vscode:
