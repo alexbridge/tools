@@ -8,16 +8,6 @@
     current_user: "{{ ansible_env.SUDO_USER }}"
 
   tasks:
-    - name: Remove conflicting vscode repo if exists
-      file:
-        path: "{{ item }}"
-        state: absent
-      loop:
-        - /etc/apt/sources.list.d/vscode.list
-        - /etc/apt/sources.list.d/vscode.sources
-        - /usr/share/keyrings/microsoft.gpg
-        - /etc/apt/keyrings/microsoft.gpg
-
     # --- packages ---
     - name: Install base packages
       apt:
@@ -30,5 +20,6 @@
           - gpg
           - make
           - fzf
+          - xclip
         state: present
         update_cache: true

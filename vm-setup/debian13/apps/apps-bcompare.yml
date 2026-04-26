@@ -1,0 +1,18 @@
+---
+- name: Beyond compare
+  hosts: localhost
+  become: true
+
+  vars:
+    current_user: "{{ ansible_env.SUDO_USER }}"
+
+  tasks:
+    - name: Download Beyond Compare 4 deb
+      get_url:
+        url: https://www.scootersoftware.com/files/bcompare-4.4.7.28397_amd64.deb
+        dest: /tmp/bcompare.deb
+
+    - name: Install Beyond Compare
+      apt:
+        deb: /tmp/bcompare.deb
+        state: present

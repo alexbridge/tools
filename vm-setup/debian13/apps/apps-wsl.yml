@@ -1,0 +1,14 @@
+---
+- name: WSL
+  hosts: localhost
+  become: true
+
+  vars:
+    current_user: "{{ ansible_env.SUDO_USER }}"
+
+  tasks:
+    - name: Install MCP filesystem server globally
+      shell: |
+        /home/{{ current_user }}/.nvm/versions/node/$(ls /home/{{ current_user }}/.nvm/versions/node | tail -1)/bin/npm install -g @modelcontextprotocol/server-filesystem@latest
+      become: true
+      become_user: "{{ current_user }}"

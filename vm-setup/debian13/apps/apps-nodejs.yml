@@ -1,0 +1,32 @@
+---
+- name: NVM, NPM
+  hosts: localhost
+  become: true
+
+  vars:
+    current_user: "{{ ansible_env.SUDO_USER }}"
+
+  tasks:
+    - name: Download nvm install script
+      get_url:
+        url: https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh
+        dest: /tmp/nvm-install.sh
+        mode: "0755"
+
+    - name: Install nvm for current user
+      shell: /tmp/nvm-install.sh
+      become: true
+      become_user: "{{ current_user }}"
+      args:
+        creates: "/home/{{ current_user }}/.nvm/nvm.sh"
+    - name: Add nvm to .bashrc
+      become: true
+      become_user: "{{ current_user }}"
+      blockinfile:
+        path: "/home/{{ current_user }}/.bashrc"
+        marker: "# {mark} NVM"
+        block: |
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+          export PATH="$NVM_DIR/versions/node/$(nvm current)/bin:$PATH"

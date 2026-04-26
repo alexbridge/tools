@@ -57,3 +57,98 @@
           - docker
           - projects
         append: true
+
+    # --- bashrc: interactive guard at top ---
+    - name: Ensure interactive guard at top of .bashrc
+      blockinfile:
+        path: "/home/{{ current_user }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - interactive guard"
+        insertbefore: BOF
+        block: |
+          # Exit early if shell is non-interactive
+          case $- in
+            *i*) ;;
+            *) return;;
+          esac
+      become_user: "{{ current_user }}"
+
+    # --- bashrc: color prompt and aliases ---
+    - name: Configure color prompt and aliases in .bashrc
+      blockinfile:
+        path: "/home/{{ current_user }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - shell aliases"
+        block: |
+          # Enable color prompt
+          force_color_prompt=yes
+
+          if [ "$force_color_prompt" = yes ]; then
+              PS1='\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+          fi
+
+          # Colored output aliases
+          alias ls='ls --color=auto'
+          alias grep='grep --color=auto'
+          alias fgrep='fgrep --color=auto'
+          alias egrep='egrep --color=auto'
+          alias ll='ls -lah'
+          alias la='ls -A'
+          alias l='ls -CF'
+      become_user: "{{ current_user }}"
+
+    # --- bashrc: history settings ---
+    - name: Configure bash history settings in .bashrc
+      blockinfile:
+        path: "/home/{{ current_user }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - history"
+        block: |
+          # Avoid duplicate or space-prefixed lines in history
+          HISTCONTROL=ignoreboth
+          HISTSIZE=10000
+          HISTFILESIZE=2000
+          shopt -s histappend
+          shopt -s checkwinsize
+      become_user: "{{ current_user }}"
+
+    # --- bashrc: git branch in prompt ---
+    - name: Show git branch in prompt
+      blockinfile:
+        path: "/home/{{ current_user }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - git prompt"
+        block: |
+          parse_git_branch() {
+            git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/'
+          }
+          export PS1="$PS1\[\e[91m\]\$(parse_git_branch)\[\e[00m\]$ "
+          PROMPT_DIRTRIM=1
+      become_user: "{{ current_user }}"
+
+    # --- bashrc: navigation aliases ---
+    - name: Configure navigation aliases in .bashrc
+      blockinfile:
+        path: "/home/{{ current_user }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - navigation aliases"
+        block: |
+          alias ...="cd /home/projects"
+          alias clip='xclip -sel clip'
+          alias work='code ~/Work/Work.code-workspace'
+
+          # fzf (fuzzy finder) navigation: jump to git repos under /home/projects
+          has_dot_git() {
+            while read -r line; do
+              [[ -d "${line}/.git" ]] && echo $line;
+            done;
+          }
+          alias cdd='cd /home/projects; f=$(find . -maxdepth 3 -type d -not -path "." | has_dot_git | fzf); [[ -n "${f}" ]] && cd "$(pwd)/${f}"'
+      become_user: "{{ current_user }}"
+
+    # --- bashrc: misc exports ---
+    - name: Configure misc exports in .bashrc
+      blockinfile:
+        path: "/home/{{ current_user }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - exports"
+        block: |
+          export FZF_DEFAULT_OPTS='--height 50% --layout=reverse --border --exact'
+          export LIBGL_ALWAYS_SOFTWARE=1
+          export GDK_BACKEND=x11
+          export DONT_PROMPT_WSL_INSTALL=1
+      become_user: "{{ current_user }}"

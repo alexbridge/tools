@@ -1,0 +1,25 @@
+---
+- name: Tilix terminal emulator
+  hosts: localhost
+  become: true
+
+  vars:
+    current_user: "{{ ansible_env.SUDO_USER }}"
+
+  tasks:
+    - name: Install tilix via apt
+      apt:
+        name: tilix
+        state: present
+        update_cache: true
+
+    - name: Add vte profile script to .bashrc
+      become_user: "{{ current_user }}"
+      blockinfile:
+        path: "/home/{{ current_user }}/.bashrc"
+        marker: "# {mark} TILIX"
+        block: |
+          # Required for tilix terminal splits and child sessions
+          if [ $TILIX_ID ] || [ $VTE_VERSION ]; then
+            source /etc/profile.d/vte-2.91.sh
+          fi
