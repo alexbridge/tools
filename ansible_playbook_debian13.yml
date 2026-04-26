@@ -1,0 +1,53 @@
+---
+- name: Debian base setup
+  hosts: localhost
+  become: true
+
+  vars:
+    current_user: "{{ ansible_user_id }}"
+
+  tasks:
+
+    # --- packages ---
+    - name: Install base packages
+      apt:
+        name:
+          - docker.io
+          - tree
+          - curl
+          - rsync
+        state: present
+        update_cache: true
+
+    # --- group: projects ---
+    - name: Create group projects
+      group:
+        name: projects
+        state: present
+
+    # --- user: projects ---
+    - name: Create user projects
+      user:
+        name: projects
+        group: projects
+        home: /home/projects
+        shell: /bin/bash
+        create_home: true
+        state: present
+
+    # --- current user: groups ---
+    - name: Add current user to sudo, docker, projects
+      user:
+        name: "{{ current_user }}"
+        groups:
+          - sudo
+          - docker
+          - projects
+        append: true
+
+    # --- docker service ---
+    - name: Enable and start docker
+      systemd:
+        name: docker
+        enabled: true
+        state: started
