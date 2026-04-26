@@ -16,6 +16,8 @@ apps-npm-globals:
 	ansible-playbook apps/apps-npm-globals.yml
 apps-bcompare:
 	ansible-playbook apps/apps-bcompare.yml --ask-become-pass
+apps-chrome:
+	ansible-playbook apps/apps-chrome.yml --ask-become-pass
 apps-docker:
 	ansible-playbook apps/apps-docker.yml --ask-become-pass
 apps-tilix:

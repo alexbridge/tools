@@ -22,5 +22,6 @@
           - fzf
           - xclip
           - ca-certificates
+          - imagemagick
         state: present
         update_cache: true

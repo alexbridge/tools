@@ -1,0 +1,40 @@
+# ansible-playbook apps/apps-chrome.yml --ask-become-pass
+---
+- name: Google Chrome setup
+  hosts: localhost
+  become: true
+
+  tasks:
+    - name: Install Chrome apt dependencies
+      apt:
+        name:
+          - curl
+          - gpg
+          - ca-certificates
+          - apt-transport-https
+        state: present
+        update_cache: true
+
+    - name: Ensure /usr/share/keyrings exists
+      file:
+        path: /usr/share/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Add Google Chrome GPG key
+      shell: |
+        curl -fSsL https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor --yes -o /usr/share/keyrings/google-chrome.gpg
+      args:
+        creates: /usr/share/keyrings/google-chrome.gpg
+
+    - name: Add Google Chrome repository
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main"
+        filename: google-chrome
+        state: present
+
+    - name: Install Google Chrome
+      apt:
+        name: google-chrome-stable
+        state: present
+        update_cache: true
