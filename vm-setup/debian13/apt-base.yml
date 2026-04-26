@@ -1,0 +1,34 @@
+# ansible-playbook setup.yml --ask-become-pass
+---
+- name: Debian base setup
+  hosts: localhost
+  become: true
+
+  vars:
+    current_user: "{{ ansible_env.SUDO_USER }}"
+
+  tasks:
+    - name: Remove conflicting vscode repo if exists
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/sources.list.d/vscode.list
+        - /etc/apt/sources.list.d/vscode.sources
+        - /usr/share/keyrings/microsoft.gpg
+        - /etc/apt/keyrings/microsoft.gpg
+
+    # --- packages ---
+    - name: Install base packages
+      apt:
+        name:
+          - tree
+          - curl
+          - rsync
+          - git
+          - wget
+          - gpg
+          - make
+          - fzf
+        state: present
+        update_cache: true

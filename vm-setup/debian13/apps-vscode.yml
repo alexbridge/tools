@@ -1,0 +1,47 @@
+# ansible-playbook setup.yml --ask-become-pass
+---
+- name: VSCode setup
+  hosts: localhost
+  become: true
+
+  vars:
+    current_user: "{{ ansible_env.SUDO_USER }}"
+
+  tasks:
+    - name: Remove conflicting vscode repo if exists
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/sources.list.d/vscode.list
+        - /etc/apt/sources.list.d/vscode.sources
+        - /usr/share/keyrings/microsoft.gpg
+        - /etc/apt/keyrings/microsoft.gpg
+
+    # --- vscode: microsoft repo ---
+    - name: Install vscode apt dependencies
+      apt:
+        name:
+          - wget
+          - gpg
+        state: present
+
+    - name: Add Microsoft GPG key
+      shell: |
+        wget -qO- https://packages.microsoft.com/keys/microsoft.asc \
+        | gpg --dearmor > /usr/share/keyrings/microsoft.gpg
+      args:
+        creates: /usr/share/keyrings/microsoft.gpg
+
+    - name: Add vscode apt repository
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg]
+          https://packages.microsoft.com/repos/code stable main"
+        filename: vscode
+        state: present
+
+    - name: Install vscode
+      apt:
+        name: code
+        state: present
+        update_cache: true

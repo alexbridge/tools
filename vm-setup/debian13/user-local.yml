@@ -1,0 +1,59 @@
+# ansible-playbook setup.yml --ask-become-pass
+---
+- name: Local user setup
+  hosts: localhost
+  become: true
+
+  vars:
+    current_user: "{{ ansible_env.SUDO_USER }}"
+    git_user_name: "O.Bilenko"
+    git_user_email: "alexbridge.de@gmail.com"
+
+  tasks:
+    # --- git config ---
+    - name: Set git user name
+      git_config:
+        name: user.name
+        value: "{{ git_user_name }}"
+        scope: global
+      become_user: "{{ current_user }}"
+
+    - name: Set git user email
+      git_config:
+        name: user.email
+        value: "{{ git_user_email }}"
+        scope: global
+      become_user: "{{ current_user }}"
+
+    - name: Set git default branch to main
+      git_config:
+        name: init.defaultBranch
+        value: main
+        scope: global
+      become_user: "{{ current_user }}"
+
+    # --- group: projects ---
+    - name: Create group projects
+      group:
+        name: projects
+        state: present
+
+    # --- user: projects ---
+    - name: Create user projects
+      user:
+        name: projects
+        group: projects
+        home: /home/projects
+        shell: /bin/bash
+        create_home: true
+        state: present
+
+    # --- current user: groups ---
+    - name: Add current user to sudo, docker, projects
+      user:
+        name: "{{ current_user }}"
+        groups:
+          - sudo
+          - docker
+          - projects
+        append: true

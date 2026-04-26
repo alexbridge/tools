@@ -358,3 +358,9 @@ gpg-key-gen:
 	read -p "Enter key: " KEY
 	gpg --armor --export $$KEY
 	echo "Replace key in ~/.gitconfig"
+clip:
+	@xclip -sel clip
+clip2img:
+	@image="/tmp/$$(date +%Y-%m-%d_%H%M%S).png"; \
+	xclip -selection clipboard -t image/png -o > $$image; \
+	echo $$image | xclip -sel clip

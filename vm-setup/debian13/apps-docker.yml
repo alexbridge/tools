@@ -1,0 +1,31 @@
+# ansible-playbook setup.yml --ask-become-pass
+---
+- name: Docker setup
+  hosts: localhost
+  become: true
+
+  vars:
+    current_user: "{{ ansible_env.SUDO_USER }}"
+
+  tasks:
+    - name: Install base packages
+      apt:
+        name:
+          - docker.io
+        state: present
+        update_cache: true
+
+    # --- current user: groups ---
+    - name: Add current user to docker
+      user:
+        name: "{{ current_user }}"
+        groups:
+          - docker
+        append: true
+
+    # --- docker service ---
+    - name: Enable and start docker
+      systemd:
+        name: docker
+        enabled: true
+        state: started
