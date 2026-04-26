@@ -20,6 +20,8 @@
           - curl
           - rsync
           - git
+          - wget
+          - gpg
         state: present
         update_cache: true
 
@@ -44,32 +46,6 @@
         value: main
         scope: global
       become_user: "{{ current_user }}"
-
-    # --- vscode: microsoft repo ---
-    - name: Install vscode apt dependencies
-      apt:
-        name:
-          - wget
-          - gpg
-        state: present
-
-    - name: Add Microsoft GPG key
-      shell: |
-        wget -qO- https://packages.microsoft.com/keys/microsoft.asc         | gpg --dearmor > /etc/apt/keyrings/microsoft.gpg
-      args:
-        creates: /etc/apt/keyrings/microsoft.gpg
-
-    - name: Add vscode apt repository
-      apt_repository:
-        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/code stable main"
-        filename: vscode
-        state: present
-
-    - name: Install vscode
-      apt:
-        name: code
-        state: present
-        update_cache: true
 
     # --- group: projects ---
     - name: Create group projects
@@ -103,3 +79,34 @@
         name: docker
         enabled: true
         state: started
+     # --- vscode: microsoft repo ---
+    - name: Install vscode apt dependencies
+      apt:
+        name:
+          - wget
+          - gpg
+        state: present
+
+    - name: Remove conflicting vscode repo if exists
+      file:
+        path: /etc/apt/sources.list.d/vscode.list
+        state: absent
+
+    - name: Add Microsoft GPG key
+      shell: |
+        wget -qO- https://packages.microsoft.com/keys/microsoft.asc \
+        | gpg --dearmor > /usr/share/keyrings/microsoft.gpg
+      args:
+        creates: /usr/share/keyrings/microsoft.gpg
+
+    - name: Add vscode apt repository
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/code stable main"
+        filename: vscode
+        state: present
+
+    - name: Install vscode
+      apt:
+        name: code
+        state: present
+        update_cache: true
