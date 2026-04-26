@@ -131,6 +131,7 @@
           alias ...="cd /home/projects"
           alias clip='xclip -sel clip'
           alias work='code ~/Work/Work.code-workspace'
+          alias tools='code /home/projects/github/tools'
 
           # fzf (fuzzy finder) navigation: jump to git repos under /home/projects
           has_dot_git() {

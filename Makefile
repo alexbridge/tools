@@ -49,7 +49,6 @@ _mmake.install:
 	@echo "alias mmake='make --file=$(MAKE_FILE)'" > ~/.mmake_aliases;
 	grep -oE '^[a-z][a-zA-Z0-9.-]+:' $(MAKE_FILE) | tr -d ':' | while read recipe; do echo "alias $$recipe='make --file=$(MAKE_FILE) $$recipe'" >> ~/.mmake_aliases; done;
 	grep '_mmake.install' ~/.bashrc > /dev/null || echo "make --file=$(MAKE_FILE) _mmake.install; [[ -f ~/.mmake_aliases ]] && source ~/.mmake_aliases" >> ~/.bashrc
-	grep 'FZF_DEFAULT_OPTS' ~/.bashrc || echo "export FZF_DEFAULT_OPTS='--height 50% --layout=reverse --border --exact'" >> ~/.bashrc
 
 _echo.vars:
 	@echo "Working Directory: $(call BLUE,$(WORK_DIR))"

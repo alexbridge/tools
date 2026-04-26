@@ -1,0 +1,40 @@
+# ansible-playbook apps/apps-antigravity.yml --ask-become-pass
+---
+- name: Antigravity setup
+  hosts: localhost
+  become: true
+
+  tasks:
+    - name: Install Antigravity apt dependencies
+      apt:
+        name:
+          - curl
+          - gpg
+          - ca-certificates
+        state: present
+        update_cache: true
+
+    - name: Ensure /etc/apt/keyrings exists
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Add Antigravity repository key
+      shell: |
+        curl -fsSL https://us-central1-apt.pkg.dev/doc/repo-signing-key.gpg | \
+        gpg --dearmor --yes -o /etc/apt/keyrings/antigravity-repo-key.gpg
+      args:
+        creates: /etc/apt/keyrings/antigravity-repo-key.gpg
+
+    - name: Add Antigravity repository
+      apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/antigravity-repo-key.gpg] https://us-central1-apt.pkg.dev/projects/antigravity-auto-updater-dev/ antigravity-debian main"
+        filename: antigravity
+        state: present
+
+    - name: Install Antigravity
+      apt:
+        name: antigravity
+        state: present
+        update_cache: true

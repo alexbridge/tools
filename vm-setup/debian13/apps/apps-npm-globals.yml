@@ -1,0 +1,15 @@
+---
+- name: NPM global packages
+  hosts: localhost
+
+  tasks:
+    - name: Install global packages
+      community.general.npm:
+        name: "{{ item }}"
+        path: "/home/{{ ansible_user_id }}"
+        global: true
+        state: latest
+      become: false
+      loop:
+        - "@google/gemini-cli"
+        - "@modelcontextprotocol/server-filesystem"

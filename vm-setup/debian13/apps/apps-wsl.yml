@@ -5,8 +5,37 @@
 
   vars:
     current_user: "{{ ansible_env.SUDO_USER }}"
+    distro_codename: "trixie"
 
   tasks:
+    - name: Install WSL prerequisites
+      apt:
+        name:
+          - lsb-release
+          - wget
+          - gpg
+          - ca-certificates
+          - gnupg2
+        state: present
+        update_cache: true
+
+    - name: Ensure /usr/share/keyrings exists
+      file:
+        path: /usr/share/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Install WSL utilities and helper packages
+      apt:
+        name:
+          - xdg-utils
+          - procps
+          - iputils-ping
+          - dnsutils
+          - dbus-user-session
+        state: present
+        update_cache: true
+
     - name: Install MCP filesystem server globally
       shell: |
         /home/{{ current_user }}/.nvm/versions/node/$(ls /home/{{ current_user }}/.nvm/versions/node | tail -1)/bin/npm install -g @modelcontextprotocol/server-filesystem@latest
