@@ -10,6 +10,15 @@
     git_user_email: "alexbridge.de@gmail.com"
 
   tasks:
+    - name: Remove conflicting vscode repo if exists
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/sources.list.d/vscode.list
+        - /etc/apt/sources.list.d/vscode.sources
+        - /usr/share/keyrings/microsoft.gpg
+        - /etc/apt/keyrings/microsoft.gpg
 
     # --- packages ---
     - name: Install base packages
@@ -86,16 +95,6 @@
           - wget
           - gpg
         state: present
-
-    - name: Remove conflicting vscode repo if exists
-      file:
-        path: "{{ item }}"
-        state: absent
-      loop:
-        - /etc/apt/sources.list.d/vscode.list
-        - /etc/apt/sources.list.d/vscode.sources
-        - /usr/share/keyrings/microsoft.gpg
-        - /etc/apt/keyrings/microsoft.gpg
 
     - name: Add Microsoft GPG key
       shell: |
