@@ -72,6 +72,16 @@
           esac
       become_user: "{{ current_user }}"
 
+    # --- bashrc: dbus-launch ---
+    - name: Configure dbus-launch in .bashrc
+      blockinfile:
+        path: "/home/{{ current_user }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - dbus-launch"
+        insertafter: "# END ANSIBLE MANAGED BLOCK - interactive guard"
+        block: |
+          export $(dbus-launch)
+      become_user: "{{ current_user }}"
+
     # --- bashrc: color prompt and aliases ---
     - name: Configure color prompt and aliases in .bashrc
       blockinfile:

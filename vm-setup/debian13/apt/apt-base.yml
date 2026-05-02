@@ -25,5 +25,6 @@
           - ca-certificates
           - imagemagick
           - jq
+          - dbus-x11
         state: present
         update_cache: true
