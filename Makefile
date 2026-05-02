@@ -192,6 +192,11 @@ mp4-compress-all:
 mp4-compress-single:
 	read -ep "Enter file to compress: " FILE;
 	ffmpeg -i $$FILE -c:v libx264 -crf 28 -c:a copy "$${FILE}.compressed.mp4"
+download-mp3:
+	@for i in $$(seq -w 1 14); do \
+		wget -nc -q --show-progress \
+		"https://archive.org/download/01-10_202604/01-$${i}.mp3"; \
+	done
 
 # =============== JSON =====================
 json.select:
