@@ -6,7 +6,7 @@
 
   vars:
     current_user: "{{ ansible_env.SUDO_USER }}"
-    java_home: "/usr/lib/jvm/temurin-21-amd64"
+    java_home: "/usr/lib/jvm/temurin-21-jdk-amd64"
 
   tasks:
     - name: Remove stale Adoptium apt list if malformed
