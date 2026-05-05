@@ -262,12 +262,11 @@ diff.json:
 	jq --sort-keys . $$FILE2 > "$$FILE2.d"
 	git diff --no-index "$$FILE1.s" "$$FILE2.d"
 
-# ========= MISC
-local.history:
+local_history:
 	@history | sort --unique > ~/.local_history2
 	mv ~/.local_history2 ~/.local_history
-	cat ~/.local_history <(cat ~/.bash_history | sort --unique) | \
-	fzf --no-sort --exact | tee -a ~/.local_history | tee >(xclip -selection clipboard) | bash
+	selected=$$(sort --unique ~/.local_history <(cat ~/.bash_history 2>/dev/null) | fzf --no-sort --exact); \
+	[ -n "$$selected" ] && echo "$$selected" | xclip -selection clipboard && eval "$$selected"
 
 try.make:
 	@echo "$(call GREEN, Trying debug of make files ...)"

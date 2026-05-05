@@ -132,6 +132,22 @@
           PROMPT_DIRTRIM=1
       become_user: "{{ current_user }}"
 
+    # --- bashrc: local.history function ---
+    - name: Add local.history shell function to .bashrc
+      blockinfile:
+        path: "/home/{{ current_user }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - local.history"
+        block: |
+          # Runs in current shell so cd works; overwrites alias from .mmake_aliases
+          local_history() {
+            history | sort --unique > ~/.local_history2
+            mv ~/.local_history2 ~/.local_history
+            local selected
+            selected=$(sort --unique ~/.local_history <(cat ~/.bash_history 2>/dev/null) | fzf --no-sort --exact)
+            [ -n "$selected" ] && echo "$selected" | xclip -selection clipboard && eval "$selected"
+          }
+      become_user: "{{ current_user }}"
+
     # --- bashrc: bash completion ---
     - name: Configure bash completion in .bashrc
       blockinfile:
@@ -158,11 +174,14 @@
           alias clip='xclip -sel clip'
           alias work='code ~/Work/Work.code-workspace'
           alias tools='code /home/projects/github/tools'
+          alias ggemini='cd ~/.gemini && gemini'
 
           # fzf (fuzzy finder) navigation: jump to git repos under /home/projects
           has_dot_git() {
             while read -r line; do
-              [[ -d "${line}/.git" ]] && echo $line;
+              [[ -d "${line}/.git" ]] && echo "$line" && continue;
+              [[ -d "${line}/../.git" ]] && echo "$line" && continue;
+              [[ -d "${line}/../../.git" ]] && echo "$line";
             done;
           }
           alias cdd='cd /home/projects; f=$(find . -maxdepth 3 -type d -not -path "." | has_dot_git | fzf); [[ -n "${f}" ]] && cd "$(pwd)/${f}"'

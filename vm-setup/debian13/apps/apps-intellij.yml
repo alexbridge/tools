@@ -1,0 +1,57 @@
+# ansible-playbook apps/apps-intellij.yml --ask-become-pass
+---
+- name: IntelliJ IDEA Community setup
+  hosts: localhost
+  become: true
+
+  vars:
+    current_user: "{{ ansible_env.SUDO_USER }}"
+    intellij_version: "2024.3.5"
+    intellij_archive: "ideaIC-{{ intellij_version }}.tar.gz"
+    intellij_url: "https://download.jetbrains.com/idea/{{ intellij_archive }}"
+    intellij_install_dir: "/opt/intellij-{{ intellij_version }}"
+
+  tasks:
+    - name: Install dependencies (wget, tar)
+      apt:
+        name: [wget, tar]
+        state: present
+        update_cache: true
+
+    - name: Download IntelliJ IDEA Community tarball
+      get_url:
+        url: "{{ intellij_url }}"
+        dest: "/tmp/{{ intellij_archive }}"
+        mode: "0644"
+
+    - name: Create install directory
+      file:
+        path: "{{ intellij_install_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Extract IntelliJ IDEA
+      unarchive:
+        src: "/tmp/{{ intellij_archive }}"
+        dest: "{{ intellij_install_dir }}"
+        remote_src: true
+        extra_opts: ["--strip-components=1"]
+      args:
+        creates: "{{ intellij_install_dir }}/bin/idea.sh"
+
+    - name: Create symlink in /usr/local/bin (idea)
+      file:
+        src: "{{ intellij_install_dir }}/bin/idea.sh"
+        dest: "/usr/local/bin/idea"
+        state: link
+
+    - name: Create symlink in /usr/local/bin (intellij)
+      file:
+        src: "{{ intellij_install_dir }}/bin/idea.sh"
+        dest: "/usr/local/bin/intellij"
+        state: link
+
+    - name: Clean up downloaded archive
+      file:
+        path: "/tmp/{{ intellij_archive }}"
+        state: absent
