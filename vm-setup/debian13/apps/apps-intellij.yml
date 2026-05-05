@@ -18,11 +18,17 @@
         state: present
         update_cache: true
 
+    - name: Check if IntelliJ is already installed
+      stat:
+        path: "{{ intellij_install_dir }}/bin/idea"
+      register: intellij_installed
+
     - name: Download IntelliJ IDEA Community tarball
       get_url:
         url: "{{ intellij_url }}"
         dest: "/tmp/{{ intellij_archive }}"
         mode: "0644"
+      when: not intellij_installed.stat.exists
 
     - name: Create install directory
       file:
@@ -36,18 +42,17 @@
         dest: "{{ intellij_install_dir }}"
         remote_src: true
         extra_opts: ["--strip-components=1"]
-      args:
-        creates: "{{ intellij_install_dir }}/bin/idea.sh"
+      when: not intellij_installed.stat.exists
 
     - name: Create symlink in /usr/local/bin (idea)
       file:
-        src: "{{ intellij_install_dir }}/bin/idea.sh"
+        src: "{{ intellij_install_dir }}/bin/idea"
         dest: "/usr/local/bin/idea"
         state: link
 
     - name: Create symlink in /usr/local/bin (intellij)
       file:
-        src: "{{ intellij_install_dir }}/bin/idea.sh"
+        src: "{{ intellij_install_dir }}/bin/idea"
         dest: "/usr/local/bin/intellij"
         state: link
 
