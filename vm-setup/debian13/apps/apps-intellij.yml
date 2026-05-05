@@ -6,10 +6,10 @@
 
   vars:
     current_user: "{{ ansible_env.SUDO_USER }}"
-    intellij_version: "2024.3.5"
+    intellij_version: "2024.3.7.1"
     intellij_archive: "ideaIC-{{ intellij_version }}.tar.gz"
     intellij_url: "https://download.jetbrains.com/idea/{{ intellij_archive }}"
-    intellij_install_dir: "/opt/intellij-{{ intellij_version }}"
+    intellij_install_dir: "/opt/intellij"
 
   tasks:
     - name: Install dependencies (wget, tar)
@@ -43,6 +43,13 @@
         remote_src: true
         extra_opts: ["--strip-components=1"]
       when: not intellij_installed.stat.exists
+
+    - name: Set ownership of install dir to current user
+      file:
+        path: "{{ intellij_install_dir }}"
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        recurse: true
 
     - name: Create symlink in /usr/local/bin (idea)
       file:
