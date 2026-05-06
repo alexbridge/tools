@@ -32,7 +32,9 @@ apps-antigravity:
 	ansible-playbook apps/apps-antigravity.yml --ask-become-pass
 apps-wsl:
 	ansible-playbook apps/apps-wsl.yml --ask-become-pass
-apps-intellij:
-	ansible-playbook apps/apps-intellij.yml --ask-become-pass
+apps-intellij-install:
+	ansible-playbook apps/apps-intellij.yml --ask-become-pass --tags install
+apps-intellij-uninstall:
+	ansible-playbook apps/apps-intellij.yml --ask-become-pass --tags uninstall
 apps-java21:
 	ansible-playbook apps/apps-java21.yml --ask-become-pass
