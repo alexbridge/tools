@@ -1,0 +1,56 @@
+---
+- name: Local user projects
+  hosts: localhost
+  become: true
+
+  vars:
+    current_user: "{{ ansible_env.SUDO_USER }}"
+    git_user_name: "O.Bilenko"
+    git_user_email: "alexbridge.de@gmail.com"
+
+  tasks:
+    # --- group: projects ---
+    - name: Create group projects
+      group:
+        name: projects
+        state: present
+
+    # --- user: projects ---
+    - name: Create user projects
+      user:
+        name: projects
+        group: projects
+        home: /home/projects
+        shell: /bin/bash
+        create_home: true
+        state: present
+
+    - name: Ensure /home/projects is group-accessible
+      file:
+        path: /home/projects
+        owner: projects
+        group: projects
+        mode: "2775"
+        state: directory
+
+    # --- current user: groups ---
+    - name: Add current user to sudo, docker, projects
+      user:
+        name: "{{ current_user }}"
+        groups:
+          - projects
+        append: true
+
+    # --- gh gitconfig for projects user ---
+    - name: Create /home/projects/.gh.gitconfig
+      copy:
+        dest: /home/projects/.gh.gitconfig
+        owner: projects
+        group: projects
+        mode: "0644"
+        content: |
+          [user]
+              name = {{ git_user_name }}
+              email = {{ git_user_email }}
+          [commit]
+              gpgsign = false

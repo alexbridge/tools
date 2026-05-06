@@ -10,6 +10,8 @@ apt-base:
 	ansible-playbook apt/apt-base.yml --ask-become-pass
 user-local:
 	ansible-playbook user/user-local.yml --ask-become-pass
+user-projects:
+	ansible-playbook user/user-projects.yml --ask-become-pass
 apps-npm-nodejs:
 	ansible-playbook apps/apps-nodejs.yml
 apps-npm-globals:

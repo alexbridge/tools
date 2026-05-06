@@ -32,32 +32,6 @@
         scope: global
       become_user: "{{ current_user }}"
 
-    # --- group: projects ---
-    - name: Create group projects
-      group:
-        name: projects
-        state: present
-
-    # --- user: projects ---
-    - name: Create user projects
-      user:
-        name: projects
-        group: projects
-        home: /home/projects
-        shell: /bin/bash
-        create_home: true
-        state: present
-
-    # --- current user: groups ---
-    - name: Add current user to sudo, docker, projects
-      user:
-        name: "{{ current_user }}"
-        groups:
-          - sudo
-          - docker
-          - projects
-        append: true
-
     # --- bashrc: interactive guard at top ---
     - name: Ensure interactive guard at top of .bashrc
       blockinfile:
