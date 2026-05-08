@@ -1,0 +1,32 @@
+# ansible-playbook apps/apps-common.yml --ask-become-pass --tags install
+# ansible-playbook apps/apps-common.yml --ask-become-pass --tags uninstall
+---
+- name: Common packages
+  hosts: localhost
+  become: true
+
+  vars:
+    current_user: "{{ ansible_env.SUDO_USER }}"
+
+  tasks:
+    - name: Install emoji fonts
+      apt:
+        name:
+          - fonts-noto-color-emoji
+          - fonts-noto
+        state: present
+        update_cache: true
+      tags: install
+
+    - name: Refresh font cache
+      command: fc-cache -fv
+      become_user: "{{ current_user }}"
+      tags: install
+
+    - name: Remove emoji fonts
+      apt:
+        name:
+          - fonts-noto-color-emoji
+          - fonts-noto
+        state: absent
+      tags: uninstall
