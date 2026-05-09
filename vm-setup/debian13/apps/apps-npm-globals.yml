@@ -14,3 +14,11 @@
         - "@google/gemini-cli"
         - "@modelcontextprotocol/server-filesystem"
         - "@fission-ai/openspec"
+
+    - name: Add gemini alias to .bashrc
+      blockinfile:
+        path: "/home/{{ ansible_user_id }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED - gemini-alias"
+        block: |
+          alias gemini='gemini --yolo'
+      become: false
