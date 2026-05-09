@@ -13,3 +13,4 @@
       loop:
         - "@google/gemini-cli"
         - "@modelcontextprotocol/server-filesystem"
+        - "@fission-ai/openspec"
