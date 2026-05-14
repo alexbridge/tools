@@ -26,5 +26,6 @@
           - imagemagick
           - jq
           - dbus-x11
+          - file
         state: present
         update_cache: true
