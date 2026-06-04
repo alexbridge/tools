@@ -1,0 +1,29 @@
+# ansible-playbook apps/apps-antigravity-cli.yml --ask-become-pass --tags install
+# ansible-playbook apps/apps-antigravity-cli.yml --ask-become-pass --tags uninstall
+---
+- name: Antigravity CLI setup
+  hosts: localhost
+
+  vars:
+    current_user: "{{ ansible_user_id }}"
+
+  tasks:
+    - name: Install Antigravity CLI
+      shell: curl -fsSL https://antigravity.google/cli/install.sh | bash
+      args:
+        creates: "/home/{{ current_user }}/.local/bin/agy"
+      tags: install
+
+    - name: Add antigravity-cli alias to .bashrc
+      blockinfile:
+        path: "/home/{{ current_user }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED - antigravity-cli"
+        block: |
+          alias antigravity-cli='$HOME/.local/bin/agy'
+      tags: install
+
+    - name: Remove Antigravity CLI
+      file:
+        path: "/home/{{ current_user }}/.local/bin/agy"
+        state: absent
+      tags: uninstall

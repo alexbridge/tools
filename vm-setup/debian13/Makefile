@@ -30,6 +30,10 @@ apps-vscode:
 	ansible-playbook apps/apps-vscode.yml --ask-become-pass
 apps-antigravity:
 	ansible-playbook apps/apps-antigravity.yml --ask-become-pass
+apps-antigravity-cli-install:
+	ansible-playbook apps/apps-antigravity-cli.yml --ask-become-pass --tags install
+apps-antigravity-cli-uninstall:
+	ansible-playbook apps/apps-antigravity-cli.yml --ask-become-pass --tags uninstall
 apps-wsl:
 	ansible-playbook apps/apps-wsl.yml --ask-become-pass
 apps-common-install:

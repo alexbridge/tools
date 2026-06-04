@@ -27,5 +27,6 @@
           - jq
           - dbus-x11
           - file
+          - gifsicle
         state: present
         update_cache: true

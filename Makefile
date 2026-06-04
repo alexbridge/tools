@@ -197,6 +197,11 @@ download-mp3:
 		wget -nc -q --show-progress \
 		"https://archive.org/download/01-10_202604/01-$${i}.mp3"; \
 	done
+download-book-mp3:
+	@for i in $$(seq 0 14); do \
+		wget -nc -q --show-progress \
+		"https://s3.knigavuhe.org/1/audio/22432/mobile5/semievie-$${i}.mp3"; \
+	done
 
 # =============== JSON =====================
 json.select:
