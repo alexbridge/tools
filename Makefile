@@ -372,3 +372,6 @@ clip2img:
 	@image="/tmp/$$(date +%Y-%m-%d_%H%M%S).png"; \
 	xclip -selection clipboard -t image/png -o > $$image; \
 	echo $$image | xclip -sel clip
+gif-scale:
+	read -p "Source file " INPUT
+	gifsicle -O3 --lossy=80 --colors 128 $$INPUT -o output.gif
