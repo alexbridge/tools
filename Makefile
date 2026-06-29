@@ -47,7 +47,18 @@ _mmake.default:
 # Install each recipe as shell alias
 _mmake.install:
 	@echo "alias mmake='make --file=$(MAKE_FILE)'" > ~/.mmake_aliases;
-	grep -oE '^[a-z][a-zA-Z0-9.-]+:' $(MAKE_FILE) | tr -d ':' | while read recipe; do echo "alias $$recipe='make --file=$(MAKE_FILE) $$recipe'" >> ~/.mmake_aliases; done;
+	grep -oE '^[a-z][a-zA-Z0-9.-]+:' $(MAKE_FILE) | tr -d ':' | grep -vx 'local_history' | while read recipe; do echo "alias $$recipe='make --file=$(MAKE_FILE) $$recipe'" >> ~/.mmake_aliases; done;
+	printf '%s\n' \
+	  '# Runs in current shell so cd/export persist; recent on top, dups removed' \
+	  'local_history() {' \
+	  '  history -a;' \
+	  '  local selected;' \
+	  '  selected=$$( { [ -f ~/.local_history ] && tac ~/.local_history; tac ~/.bash_history; } | awk '\''NF && !seen[$$0]++'\'' | fzf --no-sort --exact );' \
+	  '  [ -n "$$selected" ] || return;' \
+	  '  printf '\''%s\n'\'' "$$selected" >> ~/.local_history;' \
+	  '  printf '\''%s'\'' "$$selected" | xclip -selection clipboard;' \
+	  '  eval "$$selected";' \
+	  '}' >> ~/.mmake_aliases;
 	grep '_mmake.install' ~/.bashrc > /dev/null || echo "make --file=$(MAKE_FILE) _mmake.install; [[ -f ~/.mmake_aliases ]] && source ~/.mmake_aliases" >> ~/.bashrc
 
 _echo.vars:
@@ -268,10 +279,13 @@ diff.json:
 	git diff --no-index "$$FILE1.s" "$$FILE2.d"
 
 local_history:
-	@history | sort --unique > ~/.local_history2
-	mv ~/.local_history2 ~/.local_history
-	selected=$$(sort --unique ~/.local_history <(cat ~/.bash_history 2>/dev/null) | fzf --no-sort --exact); \
-	[ -n "$$selected" ] && echo "$$selected" | xclip -selection clipboard && eval "$$selected"
+	@history -a; \
+	selected=$$( { [ -f ~/.local_history ] && tac ~/.local_history; tac ~/.bash_history; } \
+	  | awk 'NF && !seen[$$0]++' | fzf --no-sort --exact ); \
+	[ -n "$$selected" ] || exit 0; \
+	printf '%s\n' "$$selected" >> ~/.local_history; \
+	printf '%s' "$$selected" | xclip -selection clipboard; \
+	eval "$$selected"
 
 try.make:
 	@echo "$(call GREEN, Trying debug of make files ...)"

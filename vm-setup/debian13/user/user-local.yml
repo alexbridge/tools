@@ -85,12 +85,15 @@
         path: "/home/{{ current_user }}/.bashrc"
         marker: "# {mark} ANSIBLE MANAGED BLOCK - history"
         block: |
-          # Avoid duplicate or space-prefixed lines in history
-          HISTCONTROL=ignoreboth
-          HISTSIZE=10000
-          HISTFILESIZE=2000
+          # Avoid duplicate or space-prefixed lines in history; drop old dup on re-run
+          HISTCONTROL=ignoreboth:erasedups
+          HISTSIZE=100000
+          HISTFILESIZE=200000
           shopt -s histappend
           shopt -s checkwinsize
+          # Flush each command to disk so all live shells share history
+          # (local_history reads ~/.bash_history across sessions)
+          PROMPT_COMMAND="history -a; ${PROMPT_COMMAND}"
       become_user: "{{ current_user }}"
 
     # --- bashrc: git branch in prompt ---
@@ -113,12 +116,17 @@
         marker: "# {mark} ANSIBLE MANAGED BLOCK - local.history"
         block: |
           # Runs in current shell so cd works; overwrites alias from .mmake_aliases
+          # Recent commands on top, duplicates removed (keeps most recent occurrence)
           local_history() {
-            history | sort --unique > ~/.local_history2
-            mv ~/.local_history2 ~/.local_history
+            history -a
             local selected
-            selected=$(sort --unique ~/.local_history <(cat ~/.bash_history 2>/dev/null) | fzf --no-sort --exact)
-            [ -n "$selected" ] && echo "$selected" | xclip -selection clipboard && eval "$selected"
+            selected=$( { [ -f ~/.local_history ] && tac ~/.local_history; tac ~/.bash_history; } \
+              | awk 'NF && !seen[$0]++' \
+              | fzf --no-sort --exact )
+            [ -n "$selected" ] || return
+            printf '%s\n' "$selected" >> ~/.local_history
+            printf '%s' "$selected" | xclip -selection clipboard
+            eval "$selected"
           }
       become_user: "{{ current_user }}"
 
