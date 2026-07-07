@@ -1,0 +1,26 @@
+# ansible-playbook apt/apt-git.yml --ask-become-pass
+---
+- name: Git latest setup (git-core PPA)
+  hosts: localhost
+  become: true
+
+  tasks:
+    - name: Install git PPA dependencies
+      apt:
+        name:
+          - software-properties-common
+          - ca-certificates
+        state: present
+        update_cache: true
+
+    - name: Add git-core PPA
+      apt_repository:
+        repo: ppa:git-core/ppa
+        filename: git-core
+        state: present
+
+    - name: Install latest git
+      apt:
+        name: git
+        state: latest
+        update_cache: true

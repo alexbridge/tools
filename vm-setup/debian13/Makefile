@@ -8,6 +8,8 @@ _recipe-list:
 
 apt-base:
 	ansible-playbook apt/apt-base.yml --ask-become-pass
+apt-git:
+	ansible-playbook apt/apt-git.yml --ask-become-pass
 user-local:
 	ansible-playbook user/user-local.yml --ask-become-pass
 user-projects:
