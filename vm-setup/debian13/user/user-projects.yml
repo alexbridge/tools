@@ -5,10 +5,23 @@
 
   vars:
     current_user: "{{ ansible_env.SUDO_USER }}"
-    git_user_name: "O.Bilenko"
-    git_user_email: "alexbridge.de@gmail.com"
+
+  vars_prompt:
+    - name: git_user_name
+      prompt: Git user name
+      private: false
+    - name: git_user_email
+      prompt: Git user email
+      private: false
 
   tasks:
+    - name: Require git_user_name and git_user_email
+      assert:
+        that:
+          - git_user_name | default('', true) | trim | length > 0
+          - git_user_email | default('', true) | trim | length > 0
+        fail_msg: git_user_name and git_user_email are mandatory
+
     # --- group: projects ---
     - name: Create group projects
       group:

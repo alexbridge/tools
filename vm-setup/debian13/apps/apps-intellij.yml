@@ -1,4 +1,6 @@
 # ansible-playbook apps/apps-intellij.yml --ask-become-pass --tags install
+# ansible-playbook apps/apps-intellij.yml --ask-become-pass --tags intellij    # app only
+# ansible-playbook apps/apps-intellij.yml --ask-become-pass --tags systemctl   # slice only
 # ansible-playbook apps/apps-intellij.yml --ask-become-pass --tags uninstall
 ---
 - name: IntelliJ IDEA Community
@@ -11,6 +13,13 @@
     intellij_archive: "idea-{{ intellij_version }}.tar.gz"
     intellij_url: "https://download-cdn.jetbrains.com/idea/{{ intellij_archive }}"
     intellij_install_dir: "/opt/intellij"
+    user_home: "/home/{{ current_user }}"
+    systemd_user_dir: "{{ user_home }}/.config/systemd/user"
+    # Resource caps for intellij.slice. Override via --extra-vars.
+    intellij_cpu_quota: "800%"
+    intellij_cpu_weight: "70"
+    intellij_memory_high: "12G"
+    intellij_memory_max: "16G"
 
   tasks:
     - name: Install dependencies (wget, tar)
@@ -18,13 +27,13 @@
         name: [wget, tar]
         state: present
         update_cache: true
-      tags: install
+      tags: [install, intellij]
 
     - name: Check if IntelliJ is already installed
       stat:
         path: "{{ intellij_install_dir }}/bin/idea"
       register: intellij_installed
-      tags: install
+      tags: [install, intellij]
 
     - name: Download IntelliJ IDEA Community tarball
       get_url:
@@ -32,14 +41,14 @@
         dest: "/tmp/{{ intellij_archive }}"
         mode: "0644"
       when: not intellij_installed.stat.exists
-      tags: install
+      tags: [install, intellij]
 
     - name: Create install directory
       file:
         path: "{{ intellij_install_dir }}"
         state: directory
         mode: "0755"
-      tags: install
+      tags: [install, intellij]
 
     - name: Extract IntelliJ IDEA
       unarchive:
@@ -48,7 +57,7 @@
         remote_src: true
         extra_opts: ["--strip-components=1"]
       when: not intellij_installed.stat.exists
-      tags: install
+      tags: [install, intellij]
 
     - name: Set ownership of install dir to current user
       file:
@@ -56,27 +65,80 @@
         owner: "{{ current_user }}"
         group: "{{ current_user }}"
         recurse: true
-      tags: install
+      tags: [install, intellij]
 
     - name: Create symlink in /usr/local/bin (idea)
       file:
         src: "{{ intellij_install_dir }}/bin/idea"
         dest: "/usr/local/bin/idea"
         state: link
-      tags: install
+      tags: [install, intellij]
 
     - name: Create symlink in /usr/local/bin (intellij)
       file:
         src: "{{ intellij_install_dir }}/bin/idea"
         dest: "/usr/local/bin/intellij"
         state: link
-      tags: install
+      tags: [install, intellij]
+
+    - name: Create systemd user unit directory
+      file:
+        path: "{{ systemd_user_dir }}"
+        state: directory
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        mode: "0755"
+      tags: [install, systemctl]
+
+    - name: Install intellij.slice resource-cap unit
+      copy:
+        dest: "{{ systemd_user_dir }}/intellij.slice"
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        mode: "0644"
+        content: |
+          [Slice]
+          CPUQuota={{ intellij_cpu_quota }}
+          CPUWeight={{ intellij_cpu_weight }}
+          MemoryHigh={{ intellij_memory_high }}
+          MemoryMax={{ intellij_memory_max }}
+      tags: [install, systemctl]
+
+    - name: Reload user systemd manager
+      become: true
+      become_user: "{{ current_user }}"
+      command: systemctl --user daemon-reload
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_env.SUDO_UID | default(1000) }}"
+      changed_when: false
+      tags: [install, systemctl]
+
+    - name: Install intellij aliases in .bashrc
+      blockinfile:
+        path: "{{ user_home }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED: intellij aliases"
+        create: true
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        mode: "0644"
+        block: |
+          alias intellij='/opt/current-idea . > /dev/null 2>&1 &'
+          alias intellij-systemctl='systemd-run --user --slice=intellij.slice --collect \
+            --working-directory=$PWD \
+            --setenv=DISPLAY=$DISPLAY \
+            --setenv=WAYLAND_DISPLAY=$WAYLAND_DISPLAY \
+            --setenv=XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
+            --setenv=DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS \
+            /opt/current-idea .'
+          alias kill-intellij='systemctl --user stop intellij.service 2>/dev/null; sudo pkill -9 -f idea; sudo pkill -9 -f java'
+          alias restart-intellij='sudo pkill -9 -f idea; sudo pkill -9 -f java; intellij'
+      tags: [install, systemctl]
 
     - name: Clean up downloaded archive
       file:
         path: "/tmp/{{ intellij_archive }}"
         state: absent
-      tags: install
+      tags: [install, intellij]
 
     - name: Remove install directory
       file:
@@ -93,5 +155,18 @@
     - name: Remove symlink (intellij)
       file:
         path: "/usr/local/bin/intellij"
+        state: absent
+      tags: uninstall
+
+    - name: Remove intellij.slice unit
+      file:
+        path: "{{ systemd_user_dir }}/intellij.slice"
+        state: absent
+      tags: uninstall
+
+    - name: Remove intellij aliases from .bashrc
+      blockinfile:
+        path: "{{ user_home }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED: intellij aliases"
         state: absent
       tags: uninstall

@@ -6,32 +6,14 @@
 
   vars:
     current_user: "{{ ansible_env.SUDO_USER }}"
-    git_user_name: "O.Bilenko"
-    git_user_email: "alexbridge.de@gmail.com"
+
+  vars_prompt:
+    - name: cdd_default_projects
+      prompt: cdd search root
+      default: "./IdeaProjects"
+      private: false
 
   tasks:
-    # --- git config ---
-    - name: Set git user name
-      git_config:
-        name: user.name
-        value: "{{ git_user_name }}"
-        scope: global
-      become_user: "{{ current_user }}"
-
-    - name: Set git user email
-      git_config:
-        name: user.email
-        value: "{{ git_user_email }}"
-        scope: global
-      become_user: "{{ current_user }}"
-
-    - name: Set git default branch to main
-      git_config:
-        name: init.defaultBranch
-        value: main
-        scope: global
-      become_user: "{{ current_user }}"
-
     # --- bashrc: interactive guard at top ---
     - name: Ensure interactive guard at top of .bashrc
       blockinfile:
@@ -77,6 +59,8 @@
           alias ll='ls -lah'
           alias la='ls -A'
           alias l='ls -CF'
+          alias df='df -h'
+          alias mmake='make --file=~/Makefile'
       become_user: "{{ current_user }}"
 
     # --- bashrc: history settings ---
@@ -155,18 +139,20 @@
           alias ...="cd /home/projects"
           alias clip='xclip -sel clip'
           alias work='code ~/Work/Work.code-workspace'
-          alias tools='code /home/projects/github/tools'
-          alias ggemini='cd ~/.gemini && gemini'
+          alias ccclaude='cd ~/claude'
+          alias cclaude='cd ~/claude && claude'
+          alias postman='code ~/Work/Postman'
 
           # fzf (fuzzy finder) navigation: jump to git repos under /home/projects
           has_dot_git() {
             while read -r line; do
-              [[ -d "${line}/.git" ]] && echo "$line" && continue;
-              [[ -d "${line}/../.git" ]] && echo "$line" && continue;
-              [[ -d "${line}/../../.git" ]] && echo "$line";
+              [[ -d "${line}/.git" || -f "${line}/.git" ]] && echo "$line" && continue;
+              [[ -d "${line}/../.git" || -f "${line}/../.git" ]] && echo "$line" && continue;
+              [[ -d "${line}/../../.git" || -f "${line}/../../.git" ]] && echo "$line";
             done;
           }
-          alias cdd='cd /home/projects; f=$(find . -maxdepth 3 -type d -not -path "." | has_dot_git | fzf); [[ -n "${f}" ]] && cd "$(pwd)/${f}"'
+          alias cdd='cd ~; f=$(find {{cdd_default_projects}} -maxdepth 5 -type d -not -path "." | has_dot_git | fzf); [[ -n "${f}" ]] && cd "$(pwd)/${f}"'
+          alias pdd='cd /home/projects; f=$(find . -maxdepth 6 -type d -not -path "." | has_dot_git | fzf); [[ -n "${f}" ]] && cd "$(pwd)/${f}"'
       become_user: "{{ current_user }}"
 
     # --- bashrc: misc exports ---
@@ -176,7 +162,10 @@
         marker: "# {mark} ANSIBLE MANAGED BLOCK - exports"
         block: |
           export FZF_DEFAULT_OPTS='--height 50% --layout=reverse --border --exact'
-          export LIBGL_ALWAYS_SOFTWARE=1
-          export GDK_BACKEND=x11
           export DONT_PROMPT_WSL_INSTALL=1
+
+          # Native Wayland under WSLg; hardware GL via D3D12 passthrough
+          export GDK_BACKEND=wayland,x11
+          export QT_QPA_PLATFORM='wayland;xcb'
+          export MOZ_ENABLE_WAYLAND=1
       become_user: "{{ current_user }}"

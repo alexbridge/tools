@@ -36,6 +36,23 @@
         state: present
         update_cache: true
 
+    - name: Install Wayland/WSLg GUI support
+      apt:
+        name:
+          - libwayland-client0
+          - libwayland-cursor0
+          - libwayland-egl1
+          - qtwayland5
+          - qt6-wayland
+          - mesa-utils
+          - mesa-vulkan-drivers
+          - libgl1-mesa-dri
+          - libcanberra-gtk3-module
+          - fonts-noto
+          - fonts-liberation
+        state: present
+        update_cache: true
+
     - name: Install MCP filesystem server globally
       shell: |
         /home/{{ current_user }}/.nvm/versions/node/$(ls /home/{{ current_user }}/.nvm/versions/node | tail -1)/bin/npm install -g @modelcontextprotocol/server-filesystem@latest

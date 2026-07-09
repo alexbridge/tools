@@ -12,6 +12,8 @@ apt-git:
 	ansible-playbook apt/apt-git.yml --ask-become-pass
 user-local:
 	ansible-playbook user/user-local.yml --ask-become-pass
+user-git:
+	ansible-playbook user/user-git.yml --ask-become-pass
 user-projects:
 	ansible-playbook user/user-projects.yml --ask-become-pass
 apps-npm-nodejs:
@@ -46,5 +48,9 @@ apps-intellij-install:
 	ansible-playbook apps/apps-intellij.yml --ask-become-pass --tags install
 apps-intellij-uninstall:
 	ansible-playbook apps/apps-intellij.yml --ask-become-pass --tags uninstall
+apps-intellij-app:
+	ansible-playbook apps/apps-intellij.yml --ask-become-pass --tags intellij
+apps-intellij-slice:
+	ansible-playbook apps/apps-intellij.yml --ask-become-pass --tags systemctl
 apps-java21:
 	ansible-playbook apps/apps-java21.yml --ask-become-pass
