@@ -29,6 +29,21 @@
           [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
           export PATH="$NVM_DIR/versions/node/$(nvm current)/bin:$PATH"
 
+    - name: Create husky init dir
+      ansible.builtin.file:
+        path: "/home/{{ current_user }}/.config/husky"
+        state: directory
+        mode: "0755"
+
+    # Husky hooks run under dash, not bash - nvm.sh sourcing breaks there.
+    # Plain PATH export keeps npx resolvable for IDE-triggered commits.
+    - name: Write husky init.sh with node PATH
+      ansible.builtin.copy:
+        dest: "/home/{{ current_user }}/.config/husky/init.sh"
+        mode: "0644"
+        content: |
+          export PATH="$HOME/.nvm/versions/node/v{{ node_version }}/bin:$PATH"
+
     - name: Install Node.js version {{ node_version }}
       ansible.builtin.shell: |
         source {{ nvm_dir }}/nvm.sh
