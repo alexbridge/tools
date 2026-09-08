@@ -144,7 +144,15 @@
           alias postman='code ~/Work/Postman'
 
           # fzf (fuzzy finder) navigation: jump to git repos under /home/projects
+          # Repo roots only: directory itself holds .git
           has_dot_git() {
+            while read -r line; do
+              [[ -d "${line}/.git" || -f "${line}/.git" ]] && echo "$line";
+            done;
+          }
+
+          # Repo roots plus subdirs up to 2 levels under a root
+          has_dot_git_nested() {
             while read -r line; do
               [[ -d "${line}/.git" || -f "${line}/.git" ]] && echo "$line" && continue;
               [[ -d "${line}/../.git" || -f "${line}/../.git" ]] && echo "$line" && continue;
@@ -153,6 +161,8 @@
           }
           alias cdd='cd ~; f=$(find {{cdd_default_projects}} -maxdepth 5 -type d -not -path "." | has_dot_git | fzf); [[ -n "${f}" ]] && cd "$(pwd)/${f}"'
           alias pdd='cd /home/projects; f=$(find . -maxdepth 6 -type d -not -path "." | has_dot_git | fzf); [[ -n "${f}" ]] && cd "$(pwd)/${f}"'
+          alias ccdd='cd ~; f=$(find {{cdd_default_projects}} -maxdepth 5 -type d -not -path "." | has_dot_git_nested | fzf); [[ -n "${f}" ]] && cd "$(pwd)/${f}"'
+          alias ppdd='cd /home/projects; f=$(find . -maxdepth 6 -type d -not -path "." | has_dot_git_nested | fzf); [[ -n "${f}" ]] && cd "$(pwd)/${f}"'
       become_user: "{{ current_user }}"
 
     # --- bashrc: misc exports ---
