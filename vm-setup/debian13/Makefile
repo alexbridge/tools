@@ -14,6 +14,8 @@ user-local:
 	ansible-playbook user/user-local.yml --ask-become-pass
 user-git:
 	ansible-playbook user/user-git.yml --ask-become-pass
+user-git-aliases:
+	ansible-playbook user/user-git.yml --ask-become-pass --tags aliases
 user-projects:
 	ansible-playbook user/user-projects.yml --ask-become-pass
 apps-npm-nodejs:
