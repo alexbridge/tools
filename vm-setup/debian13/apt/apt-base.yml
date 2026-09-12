@@ -27,5 +27,6 @@
           - dbus-x11
           - file
           - gifsicle
+          - htop
         state: present
         update_cache: true
