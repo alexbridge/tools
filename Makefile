@@ -160,7 +160,7 @@ git.rebase:
 	REMOTE_BRANCH=$(call REMOTE_BRANCH,Remote branch to rebase);
 	REMOTE_BRANCH="$${REMOTE_BRANCH#origin/}"
 	if [[ -n "$$REMOTE_BRANCH" ]]; then
-		cmd="git rebase origin/$${REMOTE_BRANCH}"
+		cmd="git rebase --update-refs origin/$${REMOTE_BRANCH}"
 		if [[ "$$REMOTE_BRANCH" =~ "feature" ]]; then
 			echo "Select base for origin/$${REMOTE_BRANCH}"
 			base=$$(git log --oneline -10 | fzf | cut -d' ' -f1)
