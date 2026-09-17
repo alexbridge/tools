@@ -1,0 +1,131 @@
+# ansible-playbook nix/nix-flake.yml --ask-become-pass --tags install
+# ansible-playbook nix/nix-flake.yml --ask-become-pass --tags flakes      # nix.conf only
+# ansible-playbook nix/nix-flake.yml --ask-become-pass --tags uninstall
+---
+- name: Nix with flakes
+  hosts: localhost
+  become: true
+
+  vars:
+    current_user: "{{ ansible_env.SUDO_USER }}"
+
+  tasks:
+    - name: Install installer dependencies
+      apt:
+        name:
+          - curl
+          - xz-utils
+        state: present
+        update_cache: true
+      tags: install
+
+    - name: Check whether Nix is installed
+      stat:
+        path: /nix/var/nix/profiles/default/bin/nix
+      register: nix_bin
+      tags: [install, uninstall]
+
+    # Upstream installer, multi-user mode (nix-daemon). Flakes stay off here and
+    # are enabled by the nix.conf task below
+    - name: Install Nix
+      shell: sh <(curl -L https://nixos.org/nix/install) --daemon --yes
+      args:
+        executable: /bin/bash
+      when: not nix_bin.stat.exists
+      tags: install
+
+    # Per-user nix.conf: works for both --daemon and single-user installs
+    - name: Ensure ~/.config/nix exists
+      file:
+        path: "/home/{{ current_user }}/.config/nix"
+        state: directory
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        mode: "0755"
+      tags: [install, flakes]
+
+    - name: Enable flakes in user nix.conf
+      lineinfile:
+        path: "/home/{{ current_user }}/.config/nix/nix.conf"
+        regexp: '^experimental-features\s*='
+        line: "experimental-features = nix-command flakes"
+        create: true
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        mode: "0644"
+      become_user: "{{ current_user }}"
+      tags: [install, flakes]
+
+    - name: Restart nix-daemon
+      systemd:
+        name: nix-daemon
+        state: restarted
+      failed_when: false
+      tags: [install, flakes]
+
+    - name: Verify nix and flakes
+      shell: |
+        . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+        nix --version
+        nix flake --help >/dev/null && echo "flakes ok"
+      become_user: "{{ current_user }}"
+      register: nix_check
+      changed_when: false
+      tags: [install, flakes]
+
+    - name: Show verification output
+      debug:
+        var: nix_check.stdout_lines
+      tags: [install, flakes]
+
+    # Upstream ships no uninstaller; these are the manual steps from the Nix manual
+    - name: Stop and disable nix-daemon
+      systemd:
+        name: "{{ item }}"
+        state: stopped
+        enabled: false
+      loop:
+        - nix-daemon.service
+        - nix-daemon.socket
+      failed_when: false
+      tags: uninstall
+
+    - name: Remove nix-daemon units
+      file:
+        path: "/etc/systemd/system/{{ item }}"
+        state: absent
+      loop:
+        - nix-daemon.service
+        - nix-daemon.socket
+      tags: uninstall
+
+    - name: Remove Nix store and config
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /nix
+        - /etc/nix
+        - /etc/profile.d/nix.sh
+        - /etc/profile.d/nix.sh.backup-before-nix
+        - /etc/bash.bashrc.backup-before-nix
+        - "/home/{{ current_user }}/.nix-profile"
+        - "/home/{{ current_user }}/.nix-defexpr"
+        - "/home/{{ current_user }}/.nix-channels"
+        - "/home/{{ current_user }}/.local/state/nix"
+        - "/home/{{ current_user }}/.cache/nix"
+      tags: uninstall
+
+    - name: Remove nixbld build users
+      user:
+        name: "nixbld{{ item }}"
+        state: absent
+        remove: false
+      loop: "{{ range(1, 33) | list }}"
+      tags: uninstall
+
+    - name: Remove nixbld group
+      group:
+        name: nixbld
+        state: absent
+      tags: uninstall

@@ -1,0 +1,44 @@
+# ansible-playbook apps/apps-bruno.yml --ask-become-pass --tags install
+# ansible-playbook apps/apps-bruno.yml --ask-become-pass --tags uninstall
+# ansible-playbook apps/apps-bruno.yml --ask-become-pass --tags pin        # auto-update switch only
+---
+- name: Bruno API client
+  hosts: localhost
+  become: true
+
+  vars:
+    current_user: "{{ ansible_env.SUDO_USER }}"
+    bruno_version: "4.1.0"
+    # false keeps the installed version under playbook control; the app's
+    # own updater otherwise downloads and applies releases on restart
+    bruno_autoupdate: false
+
+  tasks:
+    - name: Download Bruno deb
+      get_url:
+        url: "https://github.com/usebruno/bruno/releases/download/v{{ bruno_version }}/bruno_{{ bruno_version }}_amd64_linux.deb"
+        dest: "/tmp/bruno_{{ bruno_version }}_amd64.deb"
+        mode: "0644"
+      tags: install
+
+    - name: Install Bruno
+      apt:
+        deb: "/tmp/bruno_{{ bruno_version }}_amd64.deb"
+        state: present
+      tags: install
+
+    # Bruno rewrites preferences.json on exit, so close the app before running this
+    - name: Set Bruno auto-update preference
+      lineinfile:
+        path: "/home/{{ current_user }}/.config/bruno/preferences.json"
+        regexp: '"downloadUpdates":'
+        line: '			"downloadUpdates": {{ bruno_autoupdate | lower }}'
+      become_user: "{{ current_user }}"
+      tags: [install, pin]
+
+    - name: Remove Bruno
+      apt:
+        name: bruno
+        state: absent
+        purge: true
+      tags: uninstall

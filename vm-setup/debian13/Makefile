@@ -26,6 +26,16 @@ apps-bcompare:
 	ansible-playbook apps/apps-bcompare.yml --ask-become-pass
 apps-chrome:
 	ansible-playbook apps/apps-chrome.yml --ask-become-pass
+apps-bruno-install:
+	ansible-playbook apps/apps-bruno.yml --ask-become-pass --tags install
+apps-bruno-uninstall:
+	ansible-playbook apps/apps-bruno.yml --ask-become-pass --tags uninstall
+nix-install:
+	ansible-playbook nix/nix-flake.yml --ask-become-pass --tags install
+nix-flakes:
+	ansible-playbook nix/nix-flake.yml --ask-become-pass --tags flakes
+nix-uninstall:
+	ansible-playbook nix/nix-flake.yml --ask-become-pass --tags uninstall
 apps-docker:
 	ansible-playbook docker/apps-docker.yml --ask-become-pass
 docker-reset-overlay2:
