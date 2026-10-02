@@ -1,0 +1,111 @@
+# ansible-playbook apps/apps-sdkman.yml                   # all
+# ansible-playbook apps/apps-sdkman.yml --tags sdkman     # sdkman + .bashrc init
+# ansible-playbook apps/apps-sdkman.yml --tags gradle     # ~/.gradle/gradle.properties + drop GRADLE_OPTS
+# JDKs are not installed here: run `sdk env install` inside each project (.sdkmanrc).
+---
+- name: SDKMAN, Gradle user settings
+  hosts: localhost
+
+  vars:
+    current_user: "{{ ansible_user_id }}"
+    user_home: "/home/{{ current_user }}"
+    sdkman_dir: "{{ user_home }}/.sdkman"
+    # Overrides project gradle.properties (CI-tuned). Daemon heap kept at 4g:
+    # IntelliJ-spawned daemon shares intellij.slice (MemoryMax=16G) with the 6g IDE heap.
+    gradle_daemon_xmx: "4g"
+    gradle_workers_max: 10
+
+  tasks:
+    # --- SDKMAN ---
+    - name: Check if SDKMAN is already installed
+      stat:
+        path: "{{ sdkman_dir }}/bin/sdkman-init.sh"
+      register: sdkman_installed
+      tags: [sdkman]
+
+    - name: Download SDKMAN install script
+      get_url:
+        url: "https://get.sdkman.io?rcupdate=false"
+        dest: /tmp/sdkman-install.sh
+        mode: "0755"
+      when: not sdkman_installed.stat.exists
+      tags: [sdkman]
+
+    - name: Install SDKMAN for current user
+      shell: /tmp/sdkman-install.sh
+      args:
+        executable: /bin/bash
+        creates: "{{ sdkman_dir }}/bin/sdkman-init.sh"
+      tags: [sdkman]
+
+    - name: Remove unmanaged SDKMAN lines from .bashrc
+      lineinfile:
+        path: "{{ user_home }}/.bashrc"
+        regexp: "{{ item }}"
+        state: absent
+      loop:
+        - '^#THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!$'
+        - '^export SDKMAN_DIR="\$HOME/\.sdkman"$'
+        - '^\[\[ -s "\$HOME/\.sdkman/bin/sdkman-init\.sh" \]\] && source "\$HOME/\.sdkman/bin/sdkman-init\.sh"$'
+      tags: [sdkman]
+
+    - name: Add SDKMAN init to .bashrc
+      blockinfile:
+        path: "{{ user_home }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - sdkman"
+        insertafter: EOF
+        block: |
+          export SDKMAN_DIR="${HOME}/.sdkman"
+          [ -s "${SDKMAN_DIR}/bin/sdkman-init.sh" ] && source "${SDKMAN_DIR}/bin/sdkman-init.sh"
+      tags: [sdkman]
+
+    # Switches JDK on cd per .sdkmanrc, reverts to default on leave.
+    - name: Enable SDKMAN auto env
+      lineinfile:
+        path: "{{ sdkman_dir }}/etc/config"
+        regexp: '^sdkman_auto_env='
+        line: sdkman_auto_env=true
+      tags: [sdkman]
+
+    - name: Clean up SDKMAN install script
+      file:
+        path: /tmp/sdkman-install.sh
+        state: absent
+      when: not sdkman_installed.stat.exists
+      tags: [sdkman]
+
+    # --- Gradle ---
+    # GRADLE_OPTS -Dorg.gradle.jvmargs overrode project jvmargs and split CLI/IDE daemons.
+    - name: Remove GRADLE_OPTS export from .bashrc
+      lineinfile:
+        path: "{{ user_home }}/.bashrc"
+        regexp: "{{ item }}"
+        state: absent
+      loop:
+        - '^# Gradle resource caps \(limit workers \+ build-JVM heap on WSL2\)$'
+        - '^export GRADLE_OPTS='
+      tags: [gradle]
+
+    - name: Create ~/.gradle
+      file:
+        path: "{{ user_home }}/.gradle"
+        state: directory
+        mode: "0755"
+      tags: [gradle]
+
+    - name: Write ~/.gradle/gradle.properties
+      copy:
+        dest: "{{ user_home }}/.gradle/gradle.properties"
+        mode: "0644"
+        content: |
+          # ANSIBLE MANAGED - apps/apps-sdkman.yml
+          # Overrides project gradle.properties for local builds; CI keeps project values.
+          org.gradle.jvmargs=-Xss2m -Xmx{{ gradle_daemon_xmx }} \
+            -Dfile.encoding=UTF-8 \
+            --add-opens java.base/java.util=ALL-UNNAMED \
+            -XX:+UseG1GC \
+            -XX:+UseStringDeduplication \
+            -XX:+ParallelRefProcEnabled \
+            -XX:+HeapDumpOnOutOfMemoryError
+          org.gradle.workers.max={{ gradle_workers_max }}
+      tags: [gradle]

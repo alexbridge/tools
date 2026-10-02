@@ -66,3 +66,7 @@ apps-intellij-slice:
 	ansible-playbook apps/apps-intellij.yml --ask-become-pass --tags systemctl
 apps-java21:
 	ansible-playbook apps/apps-java21.yml --ask-become-pass
+apps-sdkman:
+	ansible-playbook apps/apps-sdkman.yml
+apps-sdkman-gradle:
+	ansible-playbook apps/apps-sdkman.yml --tags gradle

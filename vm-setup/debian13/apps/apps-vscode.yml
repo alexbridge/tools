@@ -40,8 +40,9 @@
         filename: vscode
         state: present
 
-    - name: Install vscode
+    # latest, so re-running the playbook upgrades an installed vscode
+    - name: Install or upgrade vscode
       apt:
         name: code
-        state: present
+        state: latest
         update_cache: true
