@@ -122,7 +122,9 @@
         group: "{{ current_user }}"
         mode: "0644"
         block: |
-          alias intellij='/opt/current-idea . > /dev/null 2>&1 &'
+          # setsid -f detaches into its own session, so closing the terminal
+          # does not SIGHUP the IDE
+          alias intellij='setsid -f /opt/current-idea . > /dev/null 2>&1'
           alias intellij-systemctl='systemd-run --user --slice=intellij.slice --collect \
             --working-directory=$PWD \
             --setenv=DISPLAY=$DISPLAY \
