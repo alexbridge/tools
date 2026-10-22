@@ -7,6 +7,17 @@
     current_user: "{{ ansible_env.SUDO_USER }}"
 
   tasks:
+    # The vendor apt repo publishes no InRelease and stalls apt on every update,
+    # so the deb below is the only install path
+    - name: Remove scootersoftware apt repository
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/sources.list.d/scootersoftware.list
+        - /etc/apt/sources.list.d/scootersoftware.sources
+        - /usr/share/keyrings/scootersoftware-keyring.gpg
+
     - name: Download Beyond Compare 4 deb
       get_url:
         url: https://www.scootersoftware.com/files/bcompare-4.4.7.28397_amd64.deb

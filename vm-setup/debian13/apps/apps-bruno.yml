@@ -1,6 +1,7 @@
 # ansible-playbook apps/apps-bruno.yml --ask-become-pass --tags install
 # ansible-playbook apps/apps-bruno.yml --ask-become-pass --tags uninstall
 # ansible-playbook apps/apps-bruno.yml --ask-become-pass --tags pin        # auto-update switch only
+# ansible-playbook apps/apps-bruno.yml --ask-become-pass --tags alias      # bashrc alias only
 ---
 - name: Bruno API client
   hosts: localhost
@@ -35,6 +36,27 @@
         line: '			"downloadUpdates": {{ bruno_autoupdate | lower }}'
       become_user: "{{ current_user }}"
       tags: [install, pin]
+
+    # setsid -f detaches into its own session, so closing the terminal
+    # does not SIGHUP the app
+    - name: Install bruno alias in .bashrc
+      blockinfile:
+        path: "/home/{{ current_user }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED: bruno alias"
+        create: true
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        mode: "0644"
+        block: |
+          alias bruno='setsid -f /usr/bin/bruno > /dev/null 2>&1'
+      tags: [install, alias]
+
+    - name: Remove bruno alias from .bashrc
+      blockinfile:
+        path: "/home/{{ current_user }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED: bruno alias"
+        state: absent
+      tags: uninstall
 
     - name: Remove Bruno
       apt:
