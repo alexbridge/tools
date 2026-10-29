@@ -28,6 +28,8 @@ apps-chrome:
 	ansible-playbook apps/apps-chrome.yml --ask-become-pass
 apps-bruno-install:
 	ansible-playbook apps/apps-bruno.yml --ask-become-pass --tags install
+apps-bruno-alias:
+	ansible-playbook apps/apps-bruno.yml --ask-become-pass --tags alias
 apps-bruno-uninstall:
 	ansible-playbook apps/apps-bruno.yml --ask-become-pass --tags uninstall
 nix-install:

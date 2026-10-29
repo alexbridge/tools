@@ -389,3 +389,11 @@ clip2img:
 gif-scale:
 	read -p "Source file " INPUT
 	gifsicle -O3 --lossy=80 --colors 128 $$INPUT -o output.gif
+# cd /mnt/c: cmd.exe rejects the UNC cwd of a WSL path
+WIN_USER ?= $(shell cd /mnt/c && /mnt/c/Windows/System32/cmd.exe /c 'echo %USERNAME%' 2>/dev/null | tr -d '\r')
+WIN_DOWNLOADS ?= /mnt/c/Users/$(WIN_USER)/Downloads
+copy-from-windows:
+	@cd "$(WIN_DOWNLOADS)" || exit 1
+	files=$$(ls -t | fzf $(FZF_MULTI) --prompt 'Copy to $(WORK_DIR) (SPACE multi): ')
+	[ -z "$$files" ] && exit 0
+	while IFS= read -r f; do cp -rv -- "$$f" "$(WORK_DIR)/"; done <<< "$$files"
