@@ -28,5 +28,7 @@
           - file
           - gifsicle
           - htop
+          - zip
+          - unzip
         state: present
         update_cache: true
